@@ -1,4 +1,4 @@
-import { emailFailsafe } from '../../lib/emailFailsafe.js'
+import { saveFailsafe } from '../../lib/failsafe.js'
 
 const FILE_NAME = 'COMMS HOMEMADE.xlsx'
 const SHEET_NAME = 'Sheet1'
@@ -159,10 +159,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true })
   } catch (err) {
     console.error('[submit-comms] Excel write failed:', err.message)
-    const saved = await emailFailsafe('Comms Payment Submission', HEADERS.map((h, i) => [h, rowValues[i]]))
+    const saved = await saveFailsafe('Comms', HEADERS, rowValues)
     if (saved) {
-      console.log('[submit-comms] Failsafe email sent')
-      return res.status(200).json({ success: true, warning: 'Saved via email failsafe' })
+      console.log('[submit-comms] Failsafe saved to blob store')
+      return res.status(200).json({ success: true, warning: 'Saved via failsafe' })
     }
     return res.status(500).json({ error: err.message })
   }

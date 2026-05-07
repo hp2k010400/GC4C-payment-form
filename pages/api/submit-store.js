@@ -140,7 +140,7 @@ function formatSubmission(body) {
   ]
 }
 
-import { emailFailsafe } from '../../lib/emailFailsafe.js'
+import { saveFailsafe } from '../../lib/failsafe.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -164,10 +164,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true })
   } catch (err) {
     console.error('[submit-store] Excel write failed:', err.message)
-    const saved = await emailFailsafe('Store Payment Submission', HEADERS.map((h, i) => [h, rowValues[i]]))
+    const saved = await saveFailsafe('Store', HEADERS, rowValues)
     if (saved) {
-      console.log('[submit-store] Failsafe email sent')
-      return res.status(200).json({ success: true, warning: 'Saved via email failsafe' })
+      console.log('[submit-store] Failsafe saved to blob store')
+      return res.status(200).json({ success: true, warning: 'Saved via failsafe' })
     }
     return res.status(500).json({ error: err.message })
   }
