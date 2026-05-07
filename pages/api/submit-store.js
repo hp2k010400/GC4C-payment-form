@@ -1,24 +1,21 @@
-const FILE_NAME = 'STORE HOMEMADE.xlsx'
+import { saveFailsafe } from '../../lib/failsafe.js'
+
 const SHEET_NAME = 'Sheet1'
 
-const HEADERS = [
-  'Submitted At',
-  'Store / Department',
-  'Colleague Name',
-  'Customer Name',
-  'Customer Email',
-  'Customer Phone',
-  'Payment Amount (£)',
-  'Date of Payment',
-  'Time of Payment',
-  'Additional Notes',
-  'Transaction Type',
-  'Sort Code',
-  'Account Number',
-  'PayPal Email',
-  'IBAN',
-  'BIC / SWIFT Code',
+const HEADERS_FULL = [
+  'Submitted At', 'Store / Department', 'Colleague Name',
+  'Customer Name', 'Customer Email', 'Customer Phone',
+  'Payment Amount (£)', 'Date of Payment', 'Time of Payment',
+  'Additional Notes', 'Transaction Type',
+  'Sort Code', 'Account Number', 'PayPal Email', 'IBAN', 'BIC / SWIFT Code',
   'Consent Given',
+]
+
+const HEADERS_NO_BANK = [
+  'Submitted At', 'Store / Department', 'Colleague Name',
+  'Customer Name', 'Customer Email', 'Customer Phone',
+  'Payment Amount (£)', 'Date of Payment', 'Time of Payment',
+  'Additional Notes', 'Transaction Type', 'Consent Given',
 ]
 
 const colLetter = (n) => {
@@ -29,8 +26,6 @@ const colLetter = (n) => {
   }
   return s
 }
-
-const LAST_COL = colLetter(HEADERS.length)
 
 async function getMSToken() {
   const res = await fetch(
@@ -65,14 +60,12 @@ async function graphRequest(token, path, method = 'GET', body) {
   return res.json()
 }
 
-async function getFileId(token, userId) {
+async function getFileId(token, userId, fileName) {
   const res = await fetch(
-    `https://graph.microsoft.com/v1.0/users/${userId}/drive/root:/${encodeURIComponent(FILE_NAME)}`,
+    `https://graph.microsoft.com/v1.0/users/${userId}/drive/root:/${encodeURIComponent(fileName)}`,
     { headers: { Authorization: `Bearer ${token}` } }
   )
-  if (res.status === 404) {
-    throw new Error(`Excel file "${FILE_NAME}" not found in your OneDrive root. Please create a blank Excel file with that exact name and try again.`)
-  }
+  if (res.status === 404) throw new Error(`Excel file "${fileName}" not found in OneDrive root.`)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     throw new Error(err.error?.message || `Failed to find file (${res.status})`)
@@ -80,7 +73,8 @@ async function getFileId(token, userId) {
   return (await res.json()).id
 }
 
-async function appendRow(token, userId, fileId, rowValues) {
+async function appendRow(token, userId, fileId, headers, rowValues) {
+  const lastCol = colLetter(headers.length)
   const base = `/users/${userId}/drive/items/${fileId}/workbook/worksheets/${encodeURIComponent(SHEET_NAME)}`
 
   let nextRow
@@ -88,23 +82,22 @@ async function appendRow(token, userId, fileId, rowValues) {
     const usedRange = await graphRequest(token, `${base}/usedRange`)
     const rowCount = usedRange.rowCount || 0
     if (rowCount === 0) {
-      await graphRequest(token, `${base}/range(address='A1:${LAST_COL}1')`, 'PATCH', { values: [HEADERS] })
+      await graphRequest(token, `${base}/range(address='A1:${lastCol}1')`, 'PATCH', { values: [headers] })
       nextRow = 2
     } else {
       const firstCell = usedRange.values?.[0]?.[0]
       if (typeof firstCell === 'string' && firstCell.toLowerCase().includes('submitted')) {
         nextRow = rowCount + 1
       } else {
-        await graphRequest(token, `${base}/range(address='A1:${LAST_COL}1')`, 'PATCH', { values: [HEADERS] })
+        await graphRequest(token, `${base}/range(address='A1:${lastCol}1')`, 'PATCH', { values: [headers] })
         nextRow = rowCount + 2
       }
     }
-  } catch (err) {
-    if (err.message.includes('not found in your OneDrive')) throw err
+  } catch {
     nextRow = 2
   }
 
-  await graphRequest(token, `${base}/range(address='A${nextRow}:${LAST_COL}${nextRow}')`, 'PATCH', { values: [rowValues] })
+  await graphRequest(token, `${base}/range(address='A${nextRow}:${lastCol}${nextRow}')`, 'PATCH', { values: [rowValues] })
 }
 
 function formatSubmission(body) {
@@ -123,8 +116,9 @@ function formatSubmission(body) {
   const isBankTransfer = transactionType === 'Bank Transfer'
   const isPaypal = transactionType === 'Paypal'
   const isInternational = transactionType === 'International'
+  const consentVal = consent ? 'Yes' : 'No'
 
-  return [
+  const fullRow = [
     now, store, colleagueName, customerName,
     customerEmail || '', customerPhone,
     `£${parseFloat(paymentAmount).toFixed(2)}`,
@@ -136,11 +130,21 @@ function formatSubmission(body) {
     isPaypal ? (paypalEmail || '') : '',
     isInternational ? (iban || '') : '',
     isInternational ? (bicSwift || '') : '',
-    consent ? 'Yes' : 'No',
+    consentVal,
   ]
-}
 
-import { saveFailsafe } from '../../lib/failsafe.js'
+  const noBankRow = [
+    now, store, colleagueName, customerName,
+    customerEmail || '', customerPhone,
+    `£${parseFloat(paymentAmount).toFixed(2)}`,
+    formattedDate, formattedTime,
+    additionalNotes || '',
+    transactionType,
+    consentVal,
+  ]
+
+  return { fullRow, noBankRow }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -155,16 +159,23 @@ export default async function handler(req, res) {
   const missing = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'ONEDRIVE_USER_EMAIL'].filter(k => !process.env[k])
   if (missing.length) return res.status(500).json({ error: `Server not configured — missing env vars: ${missing.join(', ')}` })
 
-  const rowValues = formatSubmission(req.body)
+  const { fullRow, noBankRow } = formatSubmission(req.body)
+  const userId = process.env.ONEDRIVE_USER_EMAIL
 
   try {
     const token = await getMSToken()
-    const fileId = await getFileId(token, process.env.ONEDRIVE_USER_EMAIL)
-    await appendRow(token, process.env.ONEDRIVE_USER_EMAIL, fileId, rowValues)
+    const [fileIdFull, fileIdNoBank] = await Promise.all([
+      getFileId(token, userId, 'STORE HOMEMADE.xlsx'),
+      getFileId(token, userId, 'STORE HOMEMADE NO BANK.xlsx'),
+    ])
+    await Promise.all([
+      appendRow(token, userId, fileIdFull, HEADERS_FULL, fullRow),
+      appendRow(token, userId, fileIdNoBank, HEADERS_NO_BANK, noBankRow),
+    ])
     return res.status(200).json({ success: true })
   } catch (err) {
     console.error('[submit-store] Excel write failed:', err.message)
-    const saved = await saveFailsafe('Store', HEADERS, rowValues)
+    const saved = await saveFailsafe('Store', HEADERS_FULL, fullRow)
     if (saved) {
       console.log('[submit-store] Failsafe saved to blob store')
       return res.status(200).json({ success: true, warning: 'Saved via failsafe' })
