@@ -47,9 +47,9 @@ export default async function handler(req, res) {
     records.sort((a, b) => new Date(a.savedAt) - new Date(b.savedAt))
 
     const csv = toCSV(records)
-    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="failed-submissions-${new Date().toISOString().slice(0, 10)}.csv"`)
-    return res.status(200).send(csv)
+    return res.status(200).send('﻿' + csv)
   } catch (err) {
     console.error('[export-failures]', err.message)
     return res.status(500).json({ error: err.message })
