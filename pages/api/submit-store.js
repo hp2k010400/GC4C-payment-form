@@ -156,30 +156,30 @@ export default async function handler(req, res) {
 
   if (!req.body.consent) return res.status(400).json({ error: 'Customer consent is required' })
 
-  const missing = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'ONEDRIVE_USER_EMAIL'].filter(k => !process.env[k])
-  if (missing.length) return res.status(500).json({ error: `Server not configured — missing env vars: ${missing.join(', ')}` })
-
   const { fullRow, noBankRow } = formatSubmission(req.body)
   const userId = process.env.ONEDRIVE_USER_EMAIL
+  const azureReady = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'ONEDRIVE_USER_EMAIL'].every(k => process.env[k])
 
-  try {
-    const token = await getMSToken()
-    const [fileIdFull, fileIdNoBank] = await Promise.all([
-      getFileId(token, userId, 'STORE HOMEMADE.xlsx'),
-      getFileId(token, userId, 'STORE HOMEMADE NO BANK.xlsx'),
-    ])
-    await Promise.all([
-      appendRow(token, userId, fileIdFull, HEADERS_FULL, fullRow),
-      appendRow(token, userId, fileIdNoBank, HEADERS_NO_BANK, noBankRow),
-    ])
-    return res.status(200).json({ success: true })
-  } catch (err) {
-    console.error('[submit-store] Excel write failed:', err.message)
-    const saved = await saveFailsafe('Store', HEADERS_FULL, fullRow)
-    if (saved) {
-      console.log('[submit-store] Failsafe saved to blob store')
-      return res.status(200).json({ success: true, warning: 'Saved via failsafe' })
+  if (azureReady) {
+    try {
+      const token = await getMSToken()
+      const [fileIdFull, fileIdNoBank] = await Promise.all([
+        getFileId(token, userId, 'STORE HOMEMADE.xlsx'),
+        getFileId(token, userId, 'STORE HOMEMADE NO BANK.xlsx'),
+      ])
+      await Promise.all([
+        appendRow(token, userId, fileIdFull, HEADERS_FULL, fullRow),
+        appendRow(token, userId, fileIdNoBank, HEADERS_NO_BANK, noBankRow),
+      ])
+      return res.status(200).json({ success: true })
+    } catch (err) {
+      console.error('[submit-store] Excel write failed:', err.message)
     }
-    return res.status(500).json({ error: err.message })
+  } else {
+    console.warn('[submit-store] Azure not configured — routing to failsafe')
   }
+
+  const saved = await saveFailsafe('Store', HEADERS_FULL, fullRow)
+  if (saved) return res.status(200).json({ success: true, warning: 'Saved via failsafe' })
+  return res.status(500).json({ error: 'Submission failed and failsafe unavailable — please try again' })
 }
