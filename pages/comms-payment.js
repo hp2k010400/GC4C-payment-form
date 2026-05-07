@@ -30,7 +30,7 @@ const EMPTY = {
   bicSwift: '',
 }
 
-const LOGO_URL = 'REPLACE_WITH_LOGO_URL'
+const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0559/0450/1875/files/GC4C_SVG_Logo.svg?v=1745920148'
 
 function Logo() {
   return (
