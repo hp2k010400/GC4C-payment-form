@@ -1,3 +1,5 @@
+import { emailFailsafe } from '../../lib/emailFailsafe.js'
+
 const FILE_NAME = 'COMMS HOMEMADE.xlsx'
 const SHEET_NAME = 'Sheet1'
 
@@ -148,14 +150,20 @@ export default async function handler(req, res) {
   const missing = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'ONEDRIVE_USER_EMAIL'].filter(k => !process.env[k])
   if (missing.length) return res.status(500).json({ error: `Server not configured — missing env vars: ${missing.join(', ')}` })
 
+  const rowValues = formatSubmission(req.body)
+
   try {
-    const rowValues = formatSubmission(req.body)
     const token = await getMSToken()
     const fileId = await getFileId(token, process.env.ONEDRIVE_USER_EMAIL)
     await appendRow(token, process.env.ONEDRIVE_USER_EMAIL, fileId, rowValues)
     return res.status(200).json({ success: true })
   } catch (err) {
-    console.error('[submit-comms]', err.message)
+    console.error('[submit-comms] Excel write failed:', err.message)
+    const saved = await emailFailsafe('Comms Payment Submission', HEADERS.map((h, i) => [h, rowValues[i]]))
+    if (saved) {
+      console.log('[submit-comms] Failsafe email sent')
+      return res.status(200).json({ success: true, warning: 'Saved via email failsafe' })
+    }
     return res.status(500).json({ error: err.message })
   }
 }
