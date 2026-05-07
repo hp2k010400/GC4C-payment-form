@@ -184,7 +184,19 @@ export default function StorePaymentForm() {
     setSubmitError(null)
   }
 
-  if (submitted) return <SuccessPage customerName={form.customerName} onReset={reset} />
+  if (submitted) return (
+    <>
+      <Head>
+        <title>Submission Received — GC4C Store</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <style>{CSS}</style>
+      </Head>
+      <SuccessPage customerName={form.customerName} onReset={reset} />
+    </>
+  )
 
   const inputClass = (key) => `gc-input${errors[key] ? ' gc-input-error' : ''}`
 
