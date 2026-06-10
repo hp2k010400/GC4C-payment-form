@@ -11,13 +11,13 @@ const COMMS_COLUMNS = [
   { key: 'po_number',         label: 'PO Number / React', finance: false },
   { key: 'number_of_items',   label: 'Items',             finance: false },
   { key: 'country_of_origin', label: 'Country',           finance: false },
-  { key: 'payment_amount',    label: 'Amount',            finance: false },
   { key: 'date_of_payment',   label: 'Date',              finance: false },
   { key: 'time_of_payment',   label: 'Time',              finance: false },
   { key: 'transaction_type',  label: 'Transaction Type',  finance: false, filterOptions: TX_TYPES },
   { key: 'customer_name',     label: 'Customer Name',     finance: false },
   { key: 'sort_code',         label: 'Sort Code',         finance: true  },
   { key: 'account_number',    label: 'Account No.',       finance: true  },
+  { key: 'payment_amount',    label: 'Amount',            finance: false },
   { key: 'holder_name',       label: 'Holder Name',       finance: true  },
   { key: 'paypal_email',      label: 'PayPal Email',      finance: true  },
   { key: 'iban',              label: 'IBAN',              finance: true  },
@@ -28,7 +28,6 @@ const STORE_COLUMNS = [
   { key: 'submitted_at',      label: 'Submitted At',      finance: false },
   { key: 'store',             label: 'Store',             finance: false, filterOptions: ['Edinburgh','Milton Keynes','Warrington','Southampton'] },
   { key: 'colleague_name',    label: 'Colleague Name',    finance: false },
-  { key: 'payment_amount',    label: 'Amount',            finance: false },
   { key: 'date_of_payment',   label: 'Date',              finance: false },
   { key: 'time_of_payment',   label: 'Time',              finance: false },
   { key: 'additional_notes',  label: 'Notes',             finance: false },
@@ -39,12 +38,14 @@ const STORE_COLUMNS = [
   { key: 'customer_phone',    label: 'Phone',             finance: false },
   { key: 'sort_code',         label: 'Sort Code',         finance: true  },
   { key: 'account_number',    label: 'Account No.',       finance: true  },
+  { key: 'payment_amount',    label: 'Amount',            finance: false },
   { key: 'paypal_email',      label: 'PayPal Email',      finance: true  },
   { key: 'iban',              label: 'IBAN',              finance: true  },
   { key: 'bic_swift',         label: 'BIC / SWIFT',       finance: true  },
 ]
 
-const isCopyable = col => col.finance || col.key === 'customer_name'
+const COPY_KEYS = new Set(['customer_name', 'sort_code', 'account_number', 'payment_amount'])
+const isCopyable = col => COPY_KEYS.has(col.key)
 
 function LockIcon({ open }) {
   return open ? (
@@ -172,14 +173,17 @@ export default function AdminPage() {
     setFilterDate(`${yyyy}-${mm}-${dd}`)
   }
 
-  function copyAll() {
+  function copyRows(rowsToCopy) {
     const cols = visibleCols.filter(isCopyable)
-    const body = filteredRows.map(row => cols.map(c => row[c.key] || '').join('\t')).join('\n')
+    const body = rowsToCopy.map(row => cols.map(c => row[c.key] || '').join('\t')).join('\n')
     navigator.clipboard.writeText(body)
     setMarching(true)
     setCopied(true)
     setTimeout(() => setCopied(false), 1800)
   }
+
+  function copyAll() { copyRows(filteredRows) }
+  function copySelected() { copyRows(filteredRows.filter(r => selectedRows.has(r.id))) }
 
   useEffect(() => {
     if (!marching) return
@@ -373,6 +377,11 @@ export default function AdminPage() {
               </span>
             )}
             <button className="refresh-btn" onClick={() => fetchData(tab, true)} disabled={refreshing || loading} title="Refresh">↻</button>
+            {selectedRows.size > 0 && (
+              <button className="copy-all-btn" onClick={copySelected}>
+                {copied ? '✓ Copied' : `Copy selected (${selectedRows.size})`}
+              </button>
+            )}
             <button className="copy-all-btn" onClick={copyAll} disabled={filteredRows.length === 0 || loading}>
               {copied ? '✓ Copied' : 'Copy all'}
             </button>
