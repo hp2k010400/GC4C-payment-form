@@ -70,7 +70,7 @@ function SuccessPage({ customerName, onReset }) {
           </div>
           <h2 className="gc-success-title">Submission Received</h2>
           <p className="gc-success-text">
-            Payment details for <strong>{customerName}</strong> have been recorded successfully and saved to the STORE HOMEMADE spreadsheet.
+            Payment details for <strong>{customerName}</strong> have been recorded successfully.
           </p>
           <button className="gc-btn-primary" onClick={onReset}>Submit Another</button>
         </div>
