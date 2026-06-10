@@ -80,7 +80,7 @@ export default function AdminPage() {
   const [editingCell, setEditingCell] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [copied, setCopied] = useState(false)
-  const [marching, setMarching] = useState(false)
+  const [marchingIds, setMarchingIds] = useState(new Set())
   const [showModal, setShowModal] = useState(false)
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -177,7 +177,7 @@ export default function AdminPage() {
     const cols = visibleCols.filter(isCopyable)
     const body = rowsToCopy.map(row => cols.map(c => row[c.key] || '').join('\t')).join('\n')
     navigator.clipboard.writeText(body)
-    setMarching(true)
+    setMarchingIds(new Set(rowsToCopy.map(r => r.id)))
     setCopied(true)
     setTimeout(() => setCopied(false), 1800)
   }
@@ -186,13 +186,13 @@ export default function AdminPage() {
   function copySelected() { copyRows(filteredRows.filter(r => selectedRows.has(r.id))) }
 
   useEffect(() => {
-    if (!marching) return
-    const handleKey = e => { if (e.key === 'Escape') setMarching(false) }
+    if (marchingIds.size === 0) return
+    const handleKey = e => { if (e.key === 'Escape') setMarchingIds(new Set()) }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [marching])
+  }, [marchingIds])
 
-  useEffect(() => { setMarching(false) }, [tab, filterDate])
+  useEffect(() => { setMarchingIds(new Set()) }, [tab, filterDate])
   useEffect(() => { setColumnFilters({}); setSelectedRows(new Set()) }, [tab])
 
   function toggleRow(id) {
@@ -529,7 +529,7 @@ export default function AdminPage() {
                       const cls = [
                         col.finance ? 'col-finance' : '',
                         isFinance && copyable ? 'cell-copyable' : '',
-                        isFinance && copyable && marching ? 'cell-marching' : '',
+                        isFinance && copyable && marchingIds.has(row.id) ? 'cell-marching' : '',
                       ].filter(Boolean).join(' ')
                       const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key
                       return (
