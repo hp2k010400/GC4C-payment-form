@@ -259,7 +259,7 @@ export default function AdminPage() {
   }
 
   function startEdit(row, col) {
-    if (!isFinance || col.key === 'submitted_at') return
+    if (col.key === 'submitted_at') return
     setEditingCell({ rowId: row.id, colKey: col.key })
     setEditValue(row[col.key] || '')
   }
@@ -527,9 +527,9 @@ export default function AdminPage() {
                       return (
                         <td
                           key={col.key}
-                          className={`${cls}${isFinance && col.key !== 'submitted_at' ? ' cell-editable' : ''}`}
+                          className={`${cls}${col.key !== 'submitted_at' ? ' cell-editable' : ''}`}
                           onDoubleClick={() => startEdit(row, col)}
-                          title={isFinance && col.key !== 'submitted_at' ? 'Double-click to edit' : undefined}
+                          title={col.key !== 'submitted_at' ? 'Double-click to edit' : undefined}
                         >
                           {isEditing ? (
                             <input
