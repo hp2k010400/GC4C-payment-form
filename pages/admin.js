@@ -72,6 +72,12 @@ export default function AdminPage() {
   const [columnFilters, setColumnFilters] = useState({})
   const [showFilters, setShowFilters] = useState(false)
   const [selectedRows, setSelectedRows] = useState(new Set())
+  const [viewMode, setViewMode] = useState('table')
+  const [summaryPeriod, setSummaryPeriod] = useState('month')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+  const [editingCell, setEditingCell] = useState(null)
+  const [editValue, setEditValue] = useState('')
   const [copied, setCopied] = useState(false)
   const [marching, setMarching] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -213,6 +219,70 @@ export default function AdminPage() {
     ))
   }
 
+  function parsePaymentDate(str) {
+    if (!str) return null
+    const [d, m, y] = str.split('/')
+    if (!d || !m || !y) return null
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+  }
+
+  function inPeriod(dateStr) {
+    const d = parsePaymentDate(dateStr)
+    if (!d) return false
+    const now = new Date()
+    if (summaryPeriod === 'day') return d.toDateString() === now.toDateString()
+    if (summaryPeriod === 'week') {
+      const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0,0,0,0)
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999)
+      return d >= mon && d <= sun
+    }
+    if (summaryPeriod === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    if (summaryPeriod === 'custom') {
+      if (customFrom && d < new Date(customFrom)) return false
+      if (customTo) { const to = new Date(customTo); to.setHours(23,59,59,999); if (d > to) return false }
+      return true
+    }
+    return true
+  }
+
+  function buildSummary() {
+    const periodRows = rows.filter(r => inPeriod(r.date_of_payment))
+    const grouped = {}
+    periodRows.forEach(r => {
+      const name = r.colleague_name || 'Unknown'
+      if (!grouped[name]) grouped[name] = { name, count: 0, items: 0, total: 0 }
+      grouped[name].count++
+      grouped[name].items += parseInt(r.number_of_items) || 0
+      grouped[name].total += parseFloat((r.payment_amount || '').replace(/[£,]/g, '')) || 0
+    })
+    return Object.values(grouped).sort((a, b) => b.total - a.total)
+  }
+
+  function startEdit(row, col) {
+    if (!isFinance || col.key === 'submitted_at') return
+    setEditingCell({ rowId: row.id, colKey: col.key })
+    setEditValue(row[col.key] || '')
+  }
+
+  async function saveEdit() {
+    if (!editingCell) return
+    const { rowId, colKey } = editingCell
+    const table = tab === 'store' ? 'store_submissions' : 'comms_submissions'
+    const prev = rows.find(r => r.id === rowId)?.[colKey]
+    setRows(p => p.map(r => r.id === rowId ? { ...r, [colKey]: editValue } : r))
+    setEditingCell(null)
+    try {
+      const res = await fetch('/api/admin-edit', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: rowId, table, field: colKey, value: editValue }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      setRows(p => p.map(r => r.id === rowId ? { ...r, [colKey]: prev } : r))
+    }
+  }
+
   async function cycleStatus(row) {
     const cycle = [null, 'complete', 'void', 'incorrect']
     const current = row.status || null
@@ -269,18 +339,10 @@ export default function AdminPage() {
         {/* Toolbar */}
         <div className="admin-toolbar">
           <div className="admin-tabs">
-            <button
-              className={`tab-btn${tab === 'comms' ? ' tab-active' : ''}`}
-              onClick={() => setTab('comms')}
-            >
-              Comms
-            </button>
-            <button
-              className={`tab-btn${tab === 'store' ? ' tab-active' : ''}`}
-              onClick={() => setTab('store')}
-            >
-              Store
-            </button>
+            <button className={`tab-btn${tab === 'comms' ? ' tab-active' : ''}`} onClick={() => { setTab('comms'); setViewMode('table') }}>Comms</button>
+            <button className={`tab-btn${tab === 'store' ? ' tab-active' : ''}`} onClick={() => { setTab('store'); setViewMode('table') }}>Store</button>
+            <div className="tab-divider" />
+            <button className={`tab-btn${viewMode === 'summary' ? ' tab-active' : ''}`} onClick={() => setViewMode(v => v === 'summary' ? 'table' : 'summary')}>Summary</button>
           </div>
           <div className="toolbar-right">
             {isFinance && (
@@ -316,8 +378,72 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Summary view */}
+        {viewMode === 'summary' && (
+          <div className="admin-content">
+            <div className="summary-wrap">
+              <div className="summary-period-bar">
+                {['day','week','month','custom'].map(p => (
+                  <button key={p} className={`period-btn${summaryPeriod === p ? ' period-active' : ''}`} onClick={() => setSummaryPeriod(p)}>
+                    {p === 'day' ? 'Today' : p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'Custom'}
+                  </button>
+                ))}
+                {summaryPeriod === 'custom' && (
+                  <div className="custom-range">
+                    <input type="date" className="date-input" value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
+                    <span style={{color:'#9ca3af'}}>→</span>
+                    <input type="date" className="date-input" value={customTo} onChange={e => setCustomTo(e.target.value)} />
+                  </div>
+                )}
+              </div>
+              {(() => {
+                const summary = buildSummary()
+                const grandCount = summary.reduce((s, r) => s + r.count, 0)
+                const grandItems = summary.reduce((s, r) => s + r.items, 0)
+                const grandTotal = summary.reduce((s, r) => s + r.total, 0)
+                const isComms = tab === 'comms'
+                return (
+                  <div className="table-wrap">
+                    <table className="admin-table summary-table">
+                      <thead>
+                        <tr>
+                          <th>Colleague Name</th>
+                          <th>Submissions</th>
+                          {isComms && <th>Total Items</th>}
+                          <th>Total (£)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summary.length === 0 && (
+                          <tr><td colSpan={isComms ? 4 : 3} style={{textAlign:'center',color:'#9ca3af',padding:'32px'}}>No data for this period</td></tr>
+                        )}
+                        {summary.map(r => (
+                          <tr key={r.name}>
+                            <td>{r.name}</td>
+                            <td>{r.count}</td>
+                            {isComms && <td>{r.items.toLocaleString()}</td>}
+                            <td className="summary-amount">£{r.total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="summary-grand-total">
+                          <td>Grand Total</td>
+                          <td>{grandCount.toLocaleString()}</td>
+                          {isComms && <td>{grandItems.toLocaleString()}</td>}
+                          <td className="summary-amount">£{grandTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* Table area */}
-        <div className="admin-content">
+        {viewMode === 'table' && <div className="admin-content">
           {loading && (
             <div className="admin-state">
               <div className="spinner" />
@@ -397,9 +523,26 @@ export default function AdminPage() {
                         isFinance && copyable ? 'cell-copyable' : '',
                         isFinance && copyable && marching ? 'cell-marching' : '',
                       ].filter(Boolean).join(' ')
+                      const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key
                       return (
-                        <td key={col.key} className={cls}>
-                          {row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'}
+                        <td
+                          key={col.key}
+                          className={`${cls}${isFinance && col.key !== 'submitted_at' ? ' cell-editable' : ''}`}
+                          onDoubleClick={() => startEdit(row, col)}
+                          title={isFinance && col.key !== 'submitted_at' ? 'Double-click to edit' : undefined}
+                        >
+                          {isEditing ? (
+                            <input
+                              className="cell-edit-input"
+                              autoFocus
+                              value={editValue}
+                              onChange={e => setEditValue(e.target.value)}
+                              onBlur={saveEdit}
+                              onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null) }}
+                            />
+                          ) : (
+                            row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'
+                          )}
                         </td>
                       )
                     })
@@ -429,7 +572,7 @@ export default function AdminPage() {
               </table>
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Batch action bar */}
@@ -552,6 +695,7 @@ const CSS = `
   }
   .tab-btn:hover { background: #f3f4f6; color: #111827; }
   .tab-active { background: #005F2C !important; color: #fff !important; }
+  .tab-divider { width: 1px; height: 24px; background: #e5e7eb; margin: 0 4px; align-self: center; }
   .toolbar-right { display: flex; align-items: center; gap: 12px; }
   .row-count { font-size: 13px; color: #9ca3af; font-weight: 500; }
   .refresh-btn {
@@ -640,6 +784,21 @@ const CSS = `
   /* Finance columns highlight */
   .col-finance { background: #fffbeb !important; }
   thead .col-finance { background: #fef3c7 !important; color: #92400e !important; }
+
+  /* Summary view */
+  .summary-wrap { max-width: 720px; }
+  .summary-period-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .period-btn { padding: 8px 18px; border-radius: 8px; border: 1.5px solid #d1d5db; background: #fff; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; color: #374151; transition: all 0.15s; }
+  .period-btn:hover { border-color: #005F2C; color: #005F2C; }
+  .period-active { background: #005F2C !important; color: #fff !important; border-color: #005F2C !important; }
+  .custom-range { display: flex; align-items: center; gap: 8px; }
+  .summary-table td, .summary-table th { white-space: nowrap; }
+  .summary-amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .summary-grand-total td { background: #f3f4f6 !important; font-weight: 700; border-top: 2px solid #d1d5db; }
+
+  /* Inline edit */
+  .cell-editable:hover { background: #f0fdf4 !important; cursor: cell; }
+  .cell-edit-input { width: 100%; padding: 2px 4px; border: 2px solid #005F2C; border-radius: 4px; font-size: 13px; font-family: inherit; background: #fff; outline: none; }
 
   /* Table cells — non-copyable are not selectable */
   .admin-table td { -webkit-user-select: none !important; user-select: none !important; cursor: default; }
