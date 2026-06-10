@@ -360,6 +360,10 @@ export default function AdminPage() {
             </button>
             <div className="date-filter">
               <input type="date" className="date-input" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
+              <button className="date-quick-btn" onClick={() => {
+                const d = new Date(); d.setDate(d.getDate() - 1)
+                setFilterDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)
+              }}>Yesterday</button>
               <button className="date-quick-btn" onClick={setToday}>Today</button>
               {filterDate && <button className="date-clear-btn" onClick={() => setFilterDate('')}>✕</button>}
             </div>
