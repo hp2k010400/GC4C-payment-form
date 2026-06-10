@@ -4,43 +4,46 @@ import { useState, useEffect, useCallback } from 'react'
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0559/0450/1875/files/GC4C_SVG_Logo.svg?v=1745920148'
 
 const COMMS_COLUMNS = [
-  { key: 'submitted_at',    label: 'Submitted At',      finance: false },
-  { key: 'colleague_name',  label: 'Colleague Name',    finance: false },
-  { key: 'customer_name',   label: 'Customer Name',     finance: false },
-  { key: 'po_number',       label: 'PO Number / React', finance: false },
-  { key: 'number_of_items', label: 'Items',             finance: false },
-  { key: 'country_of_origin', label: 'Country',         finance: false },
-  { key: 'payment_amount',  label: 'Amount',            finance: false },
-  { key: 'date_of_payment', label: 'Date',              finance: false },
-  { key: 'time_of_payment', label: 'Time',              finance: false },
-  { key: 'transaction_type', label: 'Transaction Type', finance: false },
-  { key: 'sort_code',       label: 'Sort Code',         finance: true  },
-  { key: 'account_number',  label: 'Account No.',       finance: true  },
-  { key: 'holder_name',     label: 'Holder Name',       finance: true  },
-  { key: 'paypal_email',    label: 'PayPal Email',      finance: true  },
-  { key: 'iban',            label: 'IBAN',              finance: true  },
-  { key: 'bic_swift',       label: 'BIC / SWIFT',       finance: true  },
+  { key: 'submitted_at',      label: 'Submitted At',      finance: false },
+  { key: 'colleague_name',    label: 'Colleague Name',    finance: false },
+  { key: 'po_number',         label: 'PO Number / React', finance: false },
+  { key: 'number_of_items',   label: 'Items',             finance: false },
+  { key: 'country_of_origin', label: 'Country',           finance: false },
+  { key: 'payment_amount',    label: 'Amount',            finance: false },
+  { key: 'date_of_payment',   label: 'Date',              finance: false },
+  { key: 'time_of_payment',   label: 'Time',              finance: false },
+  { key: 'transaction_type',  label: 'Transaction Type',  finance: false },
+  { key: 'customer_name',     label: 'Customer Name',     finance: false },
+  { key: 'sort_code',         label: 'Sort Code',         finance: true  },
+  { key: 'account_number',    label: 'Account No.',       finance: true  },
+  { key: 'holder_name',       label: 'Holder Name',       finance: true  },
+  { key: 'paypal_email',      label: 'PayPal Email',      finance: true  },
+  { key: 'iban',              label: 'IBAN',              finance: true  },
+  { key: 'bic_swift',         label: 'BIC / SWIFT',       finance: true  },
 ]
 
 const STORE_COLUMNS = [
-  { key: 'submitted_at',    label: 'Submitted At',      finance: false },
-  { key: 'store',           label: 'Store',             finance: false },
-  { key: 'colleague_name',  label: 'Colleague Name',    finance: false },
-  { key: 'customer_name',   label: 'Customer Name',     finance: false },
-  { key: 'customer_email',  label: 'Email',             finance: false },
-  { key: 'customer_phone',  label: 'Phone',             finance: false },
-  { key: 'payment_amount',  label: 'Amount',            finance: false },
-  { key: 'date_of_payment', label: 'Date',              finance: false },
-  { key: 'time_of_payment', label: 'Time',              finance: false },
-  { key: 'additional_notes', label: 'Notes',            finance: false },
-  { key: 'transaction_type', label: 'Transaction Type', finance: false },
-  { key: 'consent_given',   label: 'Consent',           finance: false },
-  { key: 'sort_code',       label: 'Sort Code',         finance: true  },
-  { key: 'account_number',  label: 'Account No.',       finance: true  },
-  { key: 'paypal_email',    label: 'PayPal Email',      finance: true  },
-  { key: 'iban',            label: 'IBAN',              finance: true  },
-  { key: 'bic_swift',       label: 'BIC / SWIFT',       finance: true  },
+  { key: 'submitted_at',      label: 'Submitted At',      finance: false },
+  { key: 'store',             label: 'Store',             finance: false },
+  { key: 'colleague_name',    label: 'Colleague Name',    finance: false },
+  { key: 'payment_amount',    label: 'Amount',            finance: false },
+  { key: 'date_of_payment',   label: 'Date',              finance: false },
+  { key: 'time_of_payment',   label: 'Time',              finance: false },
+  { key: 'additional_notes',  label: 'Notes',             finance: false },
+  { key: 'transaction_type',  label: 'Transaction Type',  finance: false },
+  { key: 'consent_given',     label: 'Consent',           finance: false },
+  { key: 'customer_name',     label: 'Customer Name',     finance: false },
+  { key: 'customer_email',    label: 'Email',             finance: false },
+  { key: 'customer_phone',    label: 'Phone',             finance: false },
+  { key: 'sort_code',         label: 'Sort Code',         finance: true  },
+  { key: 'account_number',    label: 'Account No.',       finance: true  },
+  { key: 'paypal_email',      label: 'PayPal Email',      finance: true  },
+  { key: 'iban',              label: 'IBAN',              finance: true  },
+  { key: 'bic_swift',         label: 'BIC / SWIFT',       finance: true  },
 ]
+
+const COMMS_COPY_KEYS = ['customer_name', 'sort_code', 'account_number', 'holder_name', 'paypal_email', 'iban', 'bic_swift']
+const STORE_COPY_KEYS  = ['customer_name', 'customer_phone', 'sort_code', 'account_number', 'paypal_email', 'iban', 'bic_swift']
 
 function LockIcon({ open }) {
   return open ? (
@@ -64,6 +67,8 @@ export default function AdminPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [copiedCell, setCopiedCell] = useState(null)
+  const [copiedRow, setCopiedRow] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -134,6 +139,21 @@ export default function AdminPage() {
     a.download = `gc4c-${tab}-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  function copyCell(value, id) {
+    if (!value || value === '—') return
+    navigator.clipboard.writeText(String(value))
+    setCopiedCell(id)
+    setTimeout(() => setCopiedCell(null), 1200)
+  }
+
+  function copyRow(row) {
+    const keys = tab === 'store' ? STORE_COPY_KEYS : COMMS_COPY_KEYS
+    const text = keys.map(k => row[k] || '').join('\t')
+    navigator.clipboard.writeText(text)
+    setCopiedRow(row.id)
+    setTimeout(() => setCopiedRow(null), 1500)
   }
 
   const allCols = tab === 'store' ? STORE_COLUMNS : COMMS_COLUMNS
@@ -233,16 +253,36 @@ export default function AdminPage() {
                         {col.label}
                       </th>
                     ))}
+                    {isFinance && <th className="col-finance col-copy-hd">Copy</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, i) => (
-                    <tr key={row.id || i}>
-                      {visibleCols.map(col => (
-                        <td key={col.key} className={col.finance ? 'col-finance' : ''}>
-                          {row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'}
+                    <tr key={row.id || i} className={copiedRow === row.id ? 'row-copied' : ''}>
+                      {visibleCols.map(col => {
+                        const cellId = `${row.id}-${col.key}`
+                        const val = row[col.key] != null && row[col.key] !== '' ? row[col.key] : null
+                        return (
+                          <td
+                            key={col.key}
+                            className={`${col.finance ? 'col-finance' : ''}${copiedCell === cellId ? ' cell-copied' : ''}${val ? ' cell-copyable' : ''}`}
+                            onClick={() => val && copyCell(val, cellId)}
+                            title={val ? 'Click to copy' : undefined}
+                          >
+                            {copiedCell === cellId ? '✓ Copied' : (val || '—')}
+                          </td>
+                        )
+                      })}
+                      {isFinance && (
+                        <td className="col-finance col-copy-btn">
+                          <button
+                            className={`copy-row-btn${copiedRow === row.id ? ' copy-row-btn-done' : ''}`}
+                            onClick={() => copyRow(row)}
+                          >
+                            {copiedRow === row.id ? '✓ Copied' : 'Copy row'}
+                          </button>
                         </td>
-                      ))}
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -441,6 +481,25 @@ const CSS = `
   /* Finance columns highlight */
   .col-finance { background: #fffbeb !important; }
   thead .col-finance { background: #fef3c7 !important; color: #92400e !important; }
+
+  /* Click-to-copy cells */
+  .cell-copyable { cursor: pointer; }
+  .cell-copyable:hover { background: #f0faf4 !important; }
+  .cell-copied { background: #dcfce7 !important; color: #15803d !important; font-weight: 600; }
+  .row-copied { outline: 2px solid #86efac; }
+
+  /* Copy row button */
+  .col-copy-hd { width: 90px; text-align: center !important; }
+  .col-copy-btn { text-align: center; }
+  .copy-row-btn {
+    padding: 4px 10px; border-radius: 6px;
+    border: 1.5px solid #d1d5db; background: #fff;
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    cursor: pointer; color: #374151; white-space: nowrap;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  }
+  .copy-row-btn:hover { border-color: #005F2C; color: #005F2C; background: #f0faf4; }
+  .copy-row-btn-done { border-color: #16a34a !important; color: #16a34a !important; background: #dcfce7 !important; }
 
   /* Modal */
   .modal-overlay {
