@@ -549,7 +549,7 @@ export default function AdminPage() {
                               onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null) }}
                             />
                           ) : (
-                            row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'
+                            row[col.key] != null && row[col.key] !== '' ? (col.key === 'payment_amount' ? String(row[col.key]).replace(/^£/, '') : row[col.key]) : '—'
                           )}
                         </td>
                       )
