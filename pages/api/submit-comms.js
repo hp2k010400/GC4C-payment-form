@@ -37,7 +37,7 @@ function formatSubmission(body) {
     po_number: poNumber || null,
     number_of_items: parseInt(numberOfItems) || null,
     country_of_origin: countryOfOrigin,
-    payment_amount: `£${parseFloat(paymentAmount).toFixed(2)}`,
+    payment_amount: parseFloat(paymentAmount).toFixed(2),
     date_of_payment: formattedDate,
     time_of_payment: formattedTime,
     transaction_type: transactionType,

@@ -29,7 +29,7 @@ function formatSubmission(body) {
     customer_name: customerName,
     customer_email: customerEmail || null,
     customer_phone: customerPhone,
-    payment_amount: `£${parseFloat(paymentAmount).toFixed(2)}`,
+    payment_amount: parseFloat(paymentAmount).toFixed(2),
     date_of_payment: formattedDate,
     time_of_payment: formattedTime,
     additional_notes: additionalNotes || null,
