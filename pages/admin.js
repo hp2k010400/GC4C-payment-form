@@ -196,6 +196,10 @@ export default function AdminPage() {
               <div className="finance-badge">
                 <LockIcon open />
                 Finance Mode Active
+                <button className="finance-signout" onClick={async () => {
+                  await fetch('/api/finance-logout', { method: 'POST' })
+                  await fetchData(tab)
+                }} title="Sign out of finance mode">✕</button>
               </div>
             ) : (
               <button className="finance-btn" onClick={() => setShowModal(true)}>
@@ -378,6 +382,13 @@ const CSS = `
     padding: 7px 14px; border-radius: 8px;
     font-size: 13px; font-weight: 600;
   }
+  .finance-signout {
+    background: none; border: none; cursor: pointer;
+    color: #065f46; font-size: 14px; font-weight: 700;
+    padding: 0 0 0 6px; line-height: 1; opacity: 0.6;
+    transition: opacity 0.15s;
+  }
+  .finance-signout:hover { opacity: 1; }
   .finance-btn {
     display: flex; align-items: center; gap: 7px;
     background: #fff; color: #374151;
