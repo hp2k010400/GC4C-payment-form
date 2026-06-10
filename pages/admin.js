@@ -163,8 +163,17 @@ export default function AdminPage() {
     navigator.clipboard.writeText(body)
     setMarching(true)
     setCopied(true)
-    setTimeout(() => { setMarching(false); setCopied(false) }, 2000)
+    setTimeout(() => setCopied(false), 1800)
   }
+
+  useEffect(() => {
+    if (!marching) return
+    const handleKey = e => { if (e.key === 'Escape') setMarching(false) }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [marching])
+
+  useEffect(() => { setMarching(false) }, [tab, filterDate])
 
   return (
     <>
