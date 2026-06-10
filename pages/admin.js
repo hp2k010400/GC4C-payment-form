@@ -7,7 +7,7 @@ const TX_TYPES = ['Bank Transfer', 'Paypal', 'International']
 
 const COMMS_COLUMNS = [
   { key: 'submitted_at',      label: 'Submitted At',      finance: false },
-  { key: 'colleague_name',    label: 'Colleague Name',    finance: false, filterOptions: ['Christopher Smith','David Keogh','Euan Russel','Mark Stewart','Phil Mack','Phillip Barron','Robert Campbell','Samantha Smith','Daniel Allan','David Malloy','Colin Grant','James Malloy','Carter Jerome','Jamie Sinclair','Ross Murray','Jack Hewitt','Jakob Dalland','Declan Bickerton','Nathan Free'] },
+  { key: 'colleague_name',    label: 'Colleague Name',    finance: false, filterOptions: ['Christopher Smith','David Keogh','Euan Russel','Mark Stewart','Phil Mack','Phillip Barron','Robert Campbell','Samantha Smith','Daniel Allan','David Malloy','Colin Grant','James Malloy','Carter Jerome','Jamie Sinclair','Ross Murray','Jack Hewitt','Jakob Dalland','Declan Bickerton','Nathan Free','Southampton','Milton Keynes'] },
   { key: 'po_number',         label: 'PO Number / React', finance: false },
   { key: 'number_of_items',   label: 'Items',             finance: false },
   { key: 'country_of_origin', label: 'Country',           finance: false },

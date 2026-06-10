@@ -7,6 +7,7 @@ const COLLEAGUES = [
   'Daniel Allan', 'David Malloy', 'Colin Grant', 'James Malloy',
   'Carter Jerome', 'Jamie Sinclair', 'Ross Murray', 'Jack Hewitt',
   'Jakob Dalland', 'Declan Bickerton', 'Nathan Free',
+  'Southampton', 'Milton Keynes',
 ]
 
 const TRANSACTION_TYPES = ['Bank Transfer', 'Paypal', 'International']
