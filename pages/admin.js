@@ -67,8 +67,8 @@ export default function AdminPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
-  const [copiedCell, setCopiedCell] = useState(null)
-  const [copiedRow, setCopiedRow] = useState(null)
+  const [filterDate, setFilterDate] = useState('')
+  const [copied, setCopied] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -130,7 +130,7 @@ export default function AdminPage() {
       return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
     }
     const header = columns.map(c => escape(c.label)).join(',')
-    const body = rows.map(row => columns.map(c => escape(row[c.key] ?? '')).join(',')).join('\n')
+    const body = filteredRows.map(row => columns.map(c => escape(row[c.key] ?? '')).join(',')).join('\n')
     const csv = '﻿' + header + '\n' + body
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -141,23 +141,29 @@ export default function AdminPage() {
     URL.revokeObjectURL(url)
   }
 
-  function copyCell(value, id) {
-    if (!value || value === '—') return
-    navigator.clipboard.writeText(String(value))
-    setCopiedCell(id)
-    setTimeout(() => setCopiedCell(null), 1200)
-  }
-
-  function copyRow(row) {
-    const keys = tab === 'store' ? STORE_COPY_KEYS : COMMS_COPY_KEYS
-    const text = keys.map(k => row[k] || '').join('\t')
-    navigator.clipboard.writeText(text)
-    setCopiedRow(row.id)
-    setTimeout(() => setCopiedRow(null), 1500)
-  }
-
   const allCols = tab === 'store' ? STORE_COLUMNS : COMMS_COLUMNS
   const visibleCols = allCols.filter(c => isFinance || !c.finance)
+
+  const filterDateFormatted = filterDate ? filterDate.split('-').reverse().join('/') : ''
+  const filteredRows = filterDate
+    ? rows.filter(r => r.date_of_payment === filterDateFormatted)
+    : rows
+
+  function setToday() {
+    const today = new Date()
+    const yyyy = today.getFullYear()
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const dd = String(today.getDate()).padStart(2, '0')
+    setFilterDate(`${yyyy}-${mm}-${dd}`)
+  }
+
+  function copyAll() {
+    const header = visibleCols.map(c => c.label).join('\t')
+    const body = filteredRows.map(row => visibleCols.map(c => row[c.key] || '').join('\t')).join('\n')
+    navigator.clipboard.writeText(header + '\n' + body)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1800)
+  }
 
   return (
     <>
@@ -207,15 +213,26 @@ export default function AdminPage() {
             </button>
           </div>
           <div className="toolbar-right">
+            <div className="date-filter">
+              <input
+                type="date"
+                className="date-input"
+                value={filterDate}
+                onChange={e => setFilterDate(e.target.value)}
+              />
+              <button className="date-quick-btn" onClick={setToday}>Today</button>
+              {filterDate && <button className="date-clear-btn" onClick={() => setFilterDate('')}>✕</button>}
+            </div>
             {lastUpdated && !loading && (
               <span className="row-count">
-                {rows.length} submission{rows.length !== 1 ? 's' : ''} · updated {lastUpdated.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {filteredRows.length}{filterDate ? ` of ${rows.length}` : ''} submission{filteredRows.length !== 1 ? 's' : ''}
               </span>
             )}
-            <button className="refresh-btn" onClick={() => fetchData(tab, true)} disabled={refreshing || loading} title="Refresh">
-              {refreshing ? '↻' : '↻'}
+            <button className="refresh-btn" onClick={() => fetchData(tab, true)} disabled={refreshing || loading} title="Refresh">↻</button>
+            <button className="copy-all-btn" onClick={copyAll} disabled={filteredRows.length === 0 || loading}>
+              {copied ? '✓ Copied' : 'Copy all'}
             </button>
-            <button className="export-btn" onClick={exportCSV} disabled={rows.length === 0 || loading}>
+            <button className="export-btn" onClick={exportCSV} disabled={filteredRows.length === 0 || loading}>
               Export CSV
             </button>
           </div>
@@ -237,13 +254,13 @@ export default function AdminPage() {
             </div>
           )}
 
-          {!loading && !error && rows.length === 0 && (
+          {!loading && !error && filteredRows.length === 0 && (
             <div className="admin-state">
-              <p>No submissions yet for {tab === 'comms' ? 'Comms' : 'Store'}.</p>
+              <p>{filterDate ? `No submissions for ${filterDateFormatted}.` : `No submissions yet for ${tab === 'comms' ? 'Comms' : 'Store'}.`}</p>
             </div>
           )}
 
-          {!loading && !error && rows.length > 0 && (
+          {!loading && !error && filteredRows.length > 0 && (
             <div className="table-wrap">
               <table className="admin-table">
                 <thead>
@@ -253,36 +270,16 @@ export default function AdminPage() {
                         {col.label}
                       </th>
                     ))}
-                    {isFinance && <th className="col-finance col-copy-hd">Copy</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={row.id || i} className={copiedRow === row.id ? 'row-copied' : ''}>
-                      {visibleCols.map(col => {
-                        const cellId = `${row.id}-${col.key}`
-                        const val = row[col.key] != null && row[col.key] !== '' ? row[col.key] : null
-                        return (
-                          <td
-                            key={col.key}
-                            className={`${col.finance ? 'col-finance' : ''}${copiedCell === cellId ? ' cell-copied' : ''}${val ? ' cell-copyable' : ''}`}
-                            onClick={() => val && copyCell(val, cellId)}
-                            title={val ? 'Click to copy' : undefined}
-                          >
-                            {copiedCell === cellId ? '✓ Copied' : (val || '—')}
-                          </td>
-                        )
-                      })}
-                      {isFinance && (
-                        <td className="col-finance col-copy-btn">
-                          <button
-                            className={`copy-row-btn${copiedRow === row.id ? ' copy-row-btn-done' : ''}`}
-                            onClick={() => copyRow(row)}
-                          >
-                            {copiedRow === row.id ? '✓ Copied' : 'Copy row'}
-                          </button>
+                  {filteredRows.map((row, i) => (
+                    <tr key={row.id || i}>
+                      {visibleCols.map(col => (
+                        <td key={col.key} className={col.finance ? 'col-finance' : ''}>
+                          {row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'}
                         </td>
-                      )}
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -482,24 +479,42 @@ const CSS = `
   .col-finance { background: #fffbeb !important; }
   thead .col-finance { background: #fef3c7 !important; color: #92400e !important; }
 
-  /* Click-to-copy cells */
-  .cell-copyable { cursor: pointer; }
-  .cell-copyable:hover { background: #f0faf4 !important; }
-  .cell-copied { background: #dcfce7 !important; color: #15803d !important; font-weight: 600; }
-  .row-copied { outline: 2px solid #86efac; }
+  /* Table text selectable like Excel */
+  .admin-table td { user-select: text; cursor: text; }
 
-  /* Copy row button */
-  .col-copy-hd { width: 90px; text-align: center !important; }
-  .col-copy-btn { text-align: center; }
-  .copy-row-btn {
-    padding: 4px 10px; border-radius: 6px;
-    border: 1.5px solid #d1d5db; background: #fff;
-    font-size: 12px; font-weight: 600; font-family: inherit;
-    cursor: pointer; color: #374151; white-space: nowrap;
-    transition: border-color 0.15s, background 0.15s, color 0.15s;
+  /* Date filter */
+  .date-filter { display: flex; align-items: center; gap: 6px; }
+  .date-input {
+    padding: 7px 10px; border: 1.5px solid #d1d5db; border-radius: 8px;
+    font-size: 13px; font-family: inherit; color: #374151;
+    outline: none; cursor: pointer;
   }
-  .copy-row-btn:hover { border-color: #005F2C; color: #005F2C; background: #f0faf4; }
-  .copy-row-btn-done { border-color: #16a34a !important; color: #16a34a !important; background: #dcfce7 !important; }
+  .date-input:focus { border-color: #005F2C; }
+  .date-quick-btn {
+    padding: 7px 12px; border-radius: 8px; border: 1.5px solid #d1d5db;
+    background: #fff; font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; color: #374151; transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .date-quick-btn:hover { border-color: #005F2C; color: #005F2C; }
+  .date-clear-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: #e5e7eb; color: #6b7280; font-size: 12px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .date-clear-btn:hover { background: #d1d5db; }
+
+  /* Copy all button */
+  .copy-all-btn {
+    padding: 8px 14px; border-radius: 8px;
+    border: 1.5px solid #d1d5db; color: #374151;
+    background: #fff; font-size: 13px; font-weight: 600;
+    font-family: inherit; cursor: pointer; white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .copy-all-btn:hover:not(:disabled) { border-color: #005F2C; color: #005F2C; background: #f0faf4; }
+  .copy-all-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* Modal */
   .modal-overlay {
