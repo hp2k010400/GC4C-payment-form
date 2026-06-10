@@ -3,16 +3,18 @@ import { useState, useEffect, useCallback } from 'react'
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0559/0450/1875/files/GC4C_SVG_Logo.svg?v=1745920148'
 
+const TX_TYPES = ['Bank Transfer', 'Paypal', 'International']
+
 const COMMS_COLUMNS = [
   { key: 'submitted_at',      label: 'Submitted At',      finance: false },
-  { key: 'colleague_name',    label: 'Colleague Name',    finance: false },
+  { key: 'colleague_name',    label: 'Colleague Name',    finance: false, filterOptions: ['Christopher Smith','David Keogh','Euan Russel','Mark Stewart','Phil Mack','Phillip Barron','Robert Campbell','Samantha Smith','Daniel Allan','David Malloy','Colin Grant','James Malloy','Carter Jerome','Jamie Sinclair','Ross Murray','Jack Hewitt','Jakob Dalland','Declan Bickerton','Nathan Free'] },
   { key: 'po_number',         label: 'PO Number / React', finance: false },
   { key: 'number_of_items',   label: 'Items',             finance: false },
   { key: 'country_of_origin', label: 'Country',           finance: false },
   { key: 'payment_amount',    label: 'Amount',            finance: false },
   { key: 'date_of_payment',   label: 'Date',              finance: false },
   { key: 'time_of_payment',   label: 'Time',              finance: false },
-  { key: 'transaction_type',  label: 'Transaction Type',  finance: false },
+  { key: 'transaction_type',  label: 'Transaction Type',  finance: false, filterOptions: TX_TYPES },
   { key: 'customer_name',     label: 'Customer Name',     finance: false },
   { key: 'sort_code',         label: 'Sort Code',         finance: true  },
   { key: 'account_number',    label: 'Account No.',       finance: true  },
@@ -24,14 +26,14 @@ const COMMS_COLUMNS = [
 
 const STORE_COLUMNS = [
   { key: 'submitted_at',      label: 'Submitted At',      finance: false },
-  { key: 'store',             label: 'Store',             finance: false },
+  { key: 'store',             label: 'Store',             finance: false, filterOptions: ['Edinburgh','Milton Keynes','Warrington','Southampton'] },
   { key: 'colleague_name',    label: 'Colleague Name',    finance: false },
   { key: 'payment_amount',    label: 'Amount',            finance: false },
   { key: 'date_of_payment',   label: 'Date',              finance: false },
   { key: 'time_of_payment',   label: 'Time',              finance: false },
   { key: 'additional_notes',  label: 'Notes',             finance: false },
-  { key: 'transaction_type',  label: 'Transaction Type',  finance: false },
-  { key: 'consent_given',     label: 'Consent',           finance: false },
+  { key: 'transaction_type',  label: 'Transaction Type',  finance: false, filterOptions: TX_TYPES },
+  { key: 'consent_given',     label: 'Consent',           finance: false, filterOptions: ['Yes','No'] },
   { key: 'customer_name',     label: 'Customer Name',     finance: false },
   { key: 'customer_email',    label: 'Email',             finance: false },
   { key: 'customer_phone',    label: 'Phone',             finance: false },
@@ -69,6 +71,7 @@ export default function AdminPage() {
   const [filterDate, setFilterDate] = useState('')
   const [columnFilters, setColumnFilters] = useState({})
   const [showFilters, setShowFilters] = useState(false)
+  const [selectedRows, setSelectedRows] = useState(new Set())
   const [copied, setCopied] = useState(false)
   const [marching, setMarching] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -149,9 +152,11 @@ export default function AdminPage() {
   const filterDateFormatted = filterDate ? filterDate.split('-').reverse().join('/') : ''
   const filteredRows = rows
     .filter(r => !filterDate || r.date_of_payment === filterDateFormatted)
-    .filter(r => Object.entries(columnFilters).every(([key, val]) =>
-      !val || String(r[key] || '').toLowerCase().includes(val.toLowerCase())
-    ))
+    .filter(r => Object.entries(columnFilters).every(([key, val]) => {
+      if (!val) return true
+      const col = allCols.find(c => c.key === key)
+      return col?.filterOptions ? r[key] === val : String(r[key] || '').toLowerCase().includes(val.toLowerCase())
+    }))
 
   function setToday() {
     const today = new Date()
@@ -178,7 +183,35 @@ export default function AdminPage() {
   }, [marching])
 
   useEffect(() => { setMarching(false) }, [tab, filterDate])
-  useEffect(() => { setColumnFilters({}) }, [tab])
+  useEffect(() => { setColumnFilters({}); setSelectedRows(new Set()) }, [tab])
+
+  function toggleRow(id) {
+    setSelectedRows(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    setSelectedRows(prev =>
+      prev.size === filteredRows.length ? new Set() : new Set(filteredRows.map(r => r.id))
+    )
+  }
+
+  async function batchStatus(status) {
+    const table = tab === 'store' ? 'store_submissions' : 'comms_submissions'
+    const ids = [...selectedRows]
+    setRows(prev => prev.map(r => selectedRows.has(r.id) ? { ...r, status } : r))
+    setSelectedRows(new Set())
+    await Promise.all(ids.map(id =>
+      fetch('/api/admin-status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, table, status }),
+      })
+    ))
+  }
 
   async function cycleStatus(row) {
     const cycle = [null, 'complete', 'void', 'incorrect']
@@ -310,7 +343,17 @@ export default function AdminPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    {isFinance && <th className="col-status-hd">Status</th>}
+                    {isFinance && (
+                      <th className="col-status-hd">
+                        <input
+                          type="checkbox"
+                          className="row-checkbox"
+                          checked={filteredRows.length > 0 && filteredRows.every(r => selectedRows.has(r.id))}
+                          onChange={toggleAll}
+                          title="Select all"
+                        />
+                      </th>
+                    )}
                     {visibleCols.map(col => (
                       <th key={col.key} className={col.finance ? 'col-finance' : ''}>
                         {col.label}
@@ -322,12 +365,23 @@ export default function AdminPage() {
                       {isFinance && <th className="col-status-hd" />}
                       {visibleCols.map(col => (
                         <th key={col.key} className={col.finance ? 'col-finance' : ''}>
-                          <input
-                            className="col-filter-input"
-                            value={columnFilters[col.key] || ''}
-                            onChange={e => setColumnFilters(f => ({ ...f, [col.key]: e.target.value }))}
-                            placeholder="Filter…"
-                          />
+                          {col.filterOptions ? (
+                            <select
+                              className="col-filter-select"
+                              value={columnFilters[col.key] || ''}
+                              onChange={e => setColumnFilters(f => ({ ...f, [col.key]: e.target.value }))}
+                            >
+                              <option value="">All</option>
+                              {col.filterOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : (
+                            <input
+                              className="col-filter-input"
+                              value={columnFilters[col.key] || ''}
+                              onChange={e => setColumnFilters(f => ({ ...f, [col.key]: e.target.value }))}
+                              placeholder="Filter…"
+                            />
+                          )}
                         </th>
                       ))}
                     </tr>
@@ -353,6 +407,12 @@ export default function AdminPage() {
                       <tr key={row.id || i} className={`row-status-${rowStatus}`}>
                         {isFinance && (
                           <td className="col-status-cell">
+                            <input
+                              type="checkbox"
+                              className="row-checkbox"
+                              checked={selectedRows.has(row.id)}
+                              onChange={() => toggleRow(row.id)}
+                            />
                             <button
                               className={`status-dot dot-${rowStatus}`}
                               onClick={() => cycleStatus(row)}
@@ -371,6 +431,18 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+
+      {/* Batch action bar */}
+      {isFinance && selectedRows.size > 0 && (
+        <div className="batch-bar">
+          <span className="batch-count">{selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected</span>
+          <button className="batch-btn batch-complete" onClick={() => batchStatus('complete')}>Mark Complete</button>
+          <button className="batch-btn batch-void" onClick={() => batchStatus('void')}>Mark Void</button>
+          <button className="batch-btn batch-incorrect" onClick={() => batchStatus('incorrect')}>Mark Incorrect</button>
+          <button className="batch-btn batch-clear" onClick={() => batchStatus(null)}>Clear Status</button>
+          <button className="batch-deselect" onClick={() => setSelectedRows(new Set())}>✕ Deselect all</button>
+        </div>
+      )}
 
       {/* Finance modal */}
       {showModal && (
@@ -611,16 +683,41 @@ const CSS = `
 
   /* Column filter row */
   .filter-row th { padding: 4px 6px !important; background: #f9fafb; }
-  .col-filter-input {
+  .col-filter-input, .col-filter-select {
     width: 100%; padding: 5px 8px; border: 1.5px solid #d1d5db; border-radius: 6px;
     font-size: 12px; font-family: inherit; color: #374151; outline: none;
     background: #fff;
   }
-  .col-filter-input:focus { border-color: #005F2C; }
+  .col-filter-input:focus, .col-filter-select:focus { border-color: #005F2C; }
+  .col-filter-select { cursor: pointer; }
+
+  /* Checkboxes */
+  .row-checkbox { width: 15px; height: 15px; cursor: pointer; accent-color: #005F2C; vertical-align: middle; margin-right: 6px; }
+
+  /* Batch bar */
+  .batch-bar {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #111827; color: #fff; border-radius: 12px;
+    padding: 12px 20px; display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 300; white-space: nowrap;
+  }
+  .batch-count { font-size: 13px; font-weight: 600; margin-right: 4px; }
+  .batch-btn {
+    padding: 7px 14px; border-radius: 8px; border: none;
+    font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .batch-btn:hover { opacity: 0.85; }
+  .batch-complete { background: #16a34a; color: #fff; }
+  .batch-void { background: #dc2626; color: #fff; }
+  .batch-incorrect { background: #d97706; color: #fff; }
+  .batch-clear { background: #4b5563; color: #fff; }
+  .batch-deselect { background: none; border: none; color: #9ca3af; font-size: 13px; cursor: pointer; font-family: inherit; padding: 0 4px; }
+  .batch-deselect:hover { color: #fff; }
 
   /* Status column */
-  .col-status-hd { width: 56px; text-align: center !important; }
-  .col-status-cell { text-align: center; padding: 0 !important; width: 56px; }
+  .col-status-hd { width: 72px; text-align: center !important; }
+  .col-status-cell { text-align: center; padding: 6px 4px !important; width: 72px; }
   .status-dot {
     width: 18px; height: 18px; border-radius: 50%;
     border: 2px solid #d1d5db; background: transparent;
