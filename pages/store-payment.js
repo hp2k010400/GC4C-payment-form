@@ -4,11 +4,20 @@ import { useState } from 'react'
 const STORES = ['Edinburgh', 'Milton Keynes', 'Warrington', 'Southampton']
 
 const COLLEAGUES = [
-  'Christopher Smith', 'David Keogh', 'Euan Russel', 'Mark Stewart',
-  'Phil Mack', 'Phillip Barron', 'Robert Campbell', 'Samantha Smith',
-  'Daniel Allan', 'David Malloy', 'Colin Grant', 'James Malloy',
-  'Carter Jerome', 'Jamie Sinclair', 'Ross Murray', 'Jack Hewitt',
-  'Jakob Dalland', 'Declan Bickerton', 'Nathan Free',
+  'Adam Cooper', 'Adam Harrison', 'Adam Little', 'Alex Boogan',
+  'Alex Peers', 'Alex Spence', 'Alex Wadlewski', 'Anthony Blaney',
+  'Blair Welsh', 'Bradley', 'Charlie Povey', 'Connor Hamerston',
+  'Connor Wright', 'Daniel Nourse', 'Derek O.', 'Eden',
+  'Fraser Scott-Herron', 'Glen Trivett', 'Grant Doyle', "Gus O'Rourke",
+  'Hamish Quinn', 'Harrison Gale', 'Harry Simpson', 'Hector C',
+  'Iain W', 'Jack Allan', 'Jack Goodger', 'Jack Laybourne',
+  'Jack Shepherd-Todd', 'James Keeler', 'Joshua Takaira', 'Kenny Price',
+  'Kieran McCarthy', 'Lewis Walker', 'Liam Greenslade', 'Lilly Rowley',
+  'Luke Horan', 'Mark Crane', 'Martin Barnes', 'Matt Brion',
+  'Matt P', 'Matt Petley', 'Matt Strong', 'Matthew Morris',
+  'Mike Currie', 'Morgan Frost', 'Mudit Rana', 'Murray Welsh',
+  'Rob Hughes', 'Rory Smith', 'Ruebin Small', 'Stephen Cottee',
+  'Stuart Hulme', 'Theo Aurora', 'Tristan Neill',
 ]
 
 const TRANSACTION_TYPES = ['Bank Transfer', 'Paypal', 'International']

@@ -498,8 +498,8 @@ const CSS = `
   thead .col-finance { background: #fef3c7 !important; color: #92400e !important; }
 
   /* Table cells — non-copyable are not selectable */
-  .admin-table td { user-select: none; cursor: default; }
-  .cell-copyable { user-select: text; cursor: text; }
+  .admin-table td { -webkit-user-select: none !important; user-select: none !important; cursor: default; }
+  .cell-copyable { -webkit-user-select: text !important; user-select: text !important; cursor: text; }
 
   /* Marching ants — Excel-style dashed animated border on copyable cells */
   @keyframes marchAnts {
