@@ -42,8 +42,7 @@ const STORE_COLUMNS = [
   { key: 'bic_swift',         label: 'BIC / SWIFT',       finance: true  },
 ]
 
-const COMMS_COPY_KEYS = ['customer_name', 'sort_code', 'account_number', 'holder_name', 'paypal_email', 'iban', 'bic_swift']
-const STORE_COPY_KEYS  = ['customer_name', 'customer_phone', 'sort_code', 'account_number', 'paypal_email', 'iban', 'bic_swift']
+const isCopyable = col => col.finance || col.key === 'customer_name'
 
 function LockIcon({ open }) {
   return open ? (
@@ -69,6 +68,7 @@ export default function AdminPage() {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [filterDate, setFilterDate] = useState('')
   const [copied, setCopied] = useState(false)
+  const [marching, setMarching] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
@@ -158,11 +158,12 @@ export default function AdminPage() {
   }
 
   function copyAll() {
-    const header = visibleCols.map(c => c.label).join('\t')
-    const body = filteredRows.map(row => visibleCols.map(c => row[c.key] || '').join('\t')).join('\n')
-    navigator.clipboard.writeText(header + '\n' + body)
+    const cols = visibleCols.filter(isCopyable)
+    const body = filteredRows.map(row => cols.map(c => row[c.key] || '').join('\t')).join('\n')
+    navigator.clipboard.writeText(body)
+    setMarching(true)
     setCopied(true)
-    setTimeout(() => setCopied(false), 1800)
+    setTimeout(() => { setMarching(false); setCopied(false) }, 2000)
   }
 
   return (
@@ -275,11 +276,19 @@ export default function AdminPage() {
                 <tbody>
                   {filteredRows.map((row, i) => (
                     <tr key={row.id || i}>
-                      {visibleCols.map(col => (
-                        <td key={col.key} className={col.finance ? 'col-finance' : ''}>
-                          {row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'}
-                        </td>
-                      ))}
+                      {visibleCols.map(col => {
+                        const copyable = isCopyable(col)
+                        const cls = [
+                          col.finance ? 'col-finance' : '',
+                          isFinance && copyable ? 'cell-copyable' : '',
+                          isFinance && copyable && marching ? 'cell-marching' : '',
+                        ].filter(Boolean).join(' ')
+                        return (
+                          <td key={col.key} className={cls}>
+                            {row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'}
+                          </td>
+                        )
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -479,8 +488,27 @@ const CSS = `
   .col-finance { background: #fffbeb !important; }
   thead .col-finance { background: #fef3c7 !important; color: #92400e !important; }
 
-  /* Table text selectable like Excel */
-  .admin-table td { user-select: text; cursor: text; }
+  /* Table cells — non-copyable are not selectable */
+  .admin-table td { user-select: none; cursor: default; }
+  .cell-copyable { user-select: text; cursor: text; }
+
+  /* Marching ants — Excel-style dashed animated border on copyable cells */
+  @keyframes marchAnts {
+    0%   { background-position: 0 0, 100% 0, 0 100%, 0 0; }
+    100% { background-position: 14px 0, 100% 14px, -14px 100%, 0 -14px; }
+  }
+  .cell-marching {
+    background-image:
+      repeating-linear-gradient(90deg, #16a34a 0, #16a34a 7px, transparent 7px, transparent 14px),
+      repeating-linear-gradient(180deg, #16a34a 0, #16a34a 7px, transparent 7px, transparent 14px),
+      repeating-linear-gradient(90deg, #16a34a 0, #16a34a 7px, transparent 7px, transparent 14px),
+      repeating-linear-gradient(180deg, #16a34a 0, #16a34a 7px, transparent 7px, transparent 14px);
+    background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+    background-position: 0 0, 100% 0, 0 100%, 0 0;
+    background-repeat: repeat-x, repeat-y, repeat-x, repeat-y;
+    background-color: #f0fdf4 !important;
+    animation: marchAnts 0.35s linear infinite;
+  }
 
   /* Date filter */
   .date-filter { display: flex; align-items: center; gap: 6px; }
