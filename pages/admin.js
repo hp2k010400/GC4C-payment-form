@@ -67,6 +67,8 @@ export default function AdminPage() {
   const [error, setError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [filterDate, setFilterDate] = useState('')
+  const [columnFilters, setColumnFilters] = useState({})
+  const [showFilters, setShowFilters] = useState(false)
   const [copied, setCopied] = useState(false)
   const [marching, setMarching] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -145,9 +147,11 @@ export default function AdminPage() {
   const visibleCols = allCols.filter(c => isFinance || !c.finance)
 
   const filterDateFormatted = filterDate ? filterDate.split('-').reverse().join('/') : ''
-  const filteredRows = filterDate
-    ? rows.filter(r => r.date_of_payment === filterDateFormatted)
-    : rows
+  const filteredRows = rows
+    .filter(r => !filterDate || r.date_of_payment === filterDateFormatted)
+    .filter(r => Object.entries(columnFilters).every(([key, val]) =>
+      !val || String(r[key] || '').toLowerCase().includes(val.toLowerCase())
+    ))
 
   function setToday() {
     const today = new Date()
@@ -174,6 +178,25 @@ export default function AdminPage() {
   }, [marching])
 
   useEffect(() => { setMarching(false) }, [tab, filterDate])
+  useEffect(() => { setColumnFilters({}) }, [tab])
+
+  async function cycleStatus(row) {
+    const cycle = [null, 'complete', 'void', 'incorrect']
+    const current = row.status || null
+    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length]
+    const table = tab === 'store' ? 'store_submissions' : 'comms_submissions'
+    setRows(prev => prev.map(r => r.id === row.id ? { ...r, status: next } : r))
+    try {
+      const res = await fetch('/api/admin-status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: row.id, table, status: next }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      setRows(prev => prev.map(r => r.id === row.id ? { ...r, status: current } : r))
+    }
+  }
 
   return (
     <>
@@ -227,19 +250,27 @@ export default function AdminPage() {
             </button>
           </div>
           <div className="toolbar-right">
+            {isFinance && (
+              <div className="status-legend">
+                <span className="legend-dot dot-complete" />Complete
+                <span className="legend-dot dot-void" />Void
+                <span className="legend-dot dot-incorrect" />Incorrect
+              </div>
+            )}
+            <button
+              className={`filter-toggle-btn${showFilters ? ' filter-toggle-active' : ''}`}
+              onClick={() => { setShowFilters(f => !f); setColumnFilters({}) }}
+            >
+              Filter columns
+            </button>
             <div className="date-filter">
-              <input
-                type="date"
-                className="date-input"
-                value={filterDate}
-                onChange={e => setFilterDate(e.target.value)}
-              />
+              <input type="date" className="date-input" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
               <button className="date-quick-btn" onClick={setToday}>Today</button>
               {filterDate && <button className="date-clear-btn" onClick={() => setFilterDate('')}>✕</button>}
             </div>
             {lastUpdated && !loading && (
               <span className="row-count">
-                {filteredRows.length}{filterDate ? ` of ${rows.length}` : ''} submission{filteredRows.length !== 1 ? 's' : ''}
+                {filteredRows.length}{(filterDate || Object.values(columnFilters).some(Boolean)) ? ` of ${rows.length}` : ''} submission{filteredRows.length !== 1 ? 's' : ''}
               </span>
             )}
             <button className="refresh-btn" onClick={() => fetchData(tab, true)} disabled={refreshing || loading} title="Refresh">↻</button>
@@ -279,32 +310,62 @@ export default function AdminPage() {
               <table className="admin-table">
                 <thead>
                   <tr>
+                    {isFinance && <th className="col-status-hd">Status</th>}
                     {visibleCols.map(col => (
                       <th key={col.key} className={col.finance ? 'col-finance' : ''}>
                         {col.label}
                       </th>
                     ))}
                   </tr>
+                  {showFilters && (
+                    <tr className="filter-row">
+                      {isFinance && <th className="col-status-hd" />}
+                      {visibleCols.map(col => (
+                        <th key={col.key} className={col.finance ? 'col-finance' : ''}>
+                          <input
+                            className="col-filter-input"
+                            value={columnFilters[col.key] || ''}
+                            onChange={e => setColumnFilters(f => ({ ...f, [col.key]: e.target.value }))}
+                            placeholder="Filter…"
+                          />
+                        </th>
+                      ))}
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
-                  {filteredRows.map((row, i) => (
-                    <tr key={row.id || i}>
-                      {visibleCols.map(col => {
-                        const copyable = isCopyable(col)
-                        const cls = [
-                          col.finance ? 'col-finance' : '',
-                          isFinance && copyable ? 'cell-copyable' : '',
-                          isFinance && copyable && marching ? 'cell-marching' : '',
-                        ].filter(Boolean).join(' ')
-                        return (
-                          <td key={col.key} className={cls}>
-                            {row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'}
+                  {filteredRows.map((row, i) => {
+                    const rowStatus = row.status || 'none'
+                    const cells = visibleCols.map(col => {
+                      const copyable = isCopyable(col)
+                      const cls = [
+                        col.finance ? 'col-finance' : '',
+                        isFinance && copyable ? 'cell-copyable' : '',
+                        isFinance && copyable && marching ? 'cell-marching' : '',
+                      ].filter(Boolean).join(' ')
+                      return (
+                        <td key={col.key} className={cls}>
+                          {row[col.key] != null && row[col.key] !== '' ? row[col.key] : '—'}
+                        </td>
+                      )
+                    })
+                    return (
+                      <tr key={row.id || i} className={`row-status-${rowStatus}`}>
+                        {isFinance && (
+                          <td className="col-status-cell">
+                            <button
+                              className={`status-dot dot-${rowStatus}`}
+                              onClick={() => cycleStatus(row)}
+                              title={rowStatus === 'none' ? 'Click to mark complete' : `Status: ${rowStatus} — click to cycle`}
+                            />
                           </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
+                        )}
+                        {cells}
+                      </tr>
+                    )
+                  })}
                 </tbody>
+
               </table>
             </div>
           )}
@@ -529,6 +590,56 @@ const CSS = `
     background-color: #f0fdf4 !important;
     animation: marchAnts 0.35s linear infinite;
   }
+
+  /* Status legend */
+  .status-legend { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #6b7280; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 8px; }
+  .legend-dot:first-child { margin-left: 0; }
+  .dot-complete { background: #16a34a; }
+  .dot-void { background: #dc2626; }
+  .dot-incorrect { background: #d97706; }
+
+  /* Filter toggle */
+  .filter-toggle-btn {
+    padding: 7px 14px; border-radius: 8px; border: 1.5px solid #d1d5db;
+    background: #fff; font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; color: #374151; transition: border-color 0.15s, color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .filter-toggle-btn:hover { border-color: #005F2C; color: #005F2C; }
+  .filter-toggle-active { border-color: #005F2C !important; background: #f0faf4 !important; color: #005F2C !important; }
+
+  /* Column filter row */
+  .filter-row th { padding: 4px 6px !important; background: #f9fafb; }
+  .col-filter-input {
+    width: 100%; padding: 5px 8px; border: 1.5px solid #d1d5db; border-radius: 6px;
+    font-size: 12px; font-family: inherit; color: #374151; outline: none;
+    background: #fff;
+  }
+  .col-filter-input:focus { border-color: #005F2C; }
+
+  /* Status column */
+  .col-status-hd { width: 56px; text-align: center !important; }
+  .col-status-cell { text-align: center; padding: 0 !important; width: 56px; }
+  .status-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid #d1d5db; background: transparent;
+    cursor: pointer; display: inline-block;
+    transition: all 0.15s; vertical-align: middle;
+  }
+  .status-dot:hover { transform: scale(1.2); }
+  .dot-none { border-color: #d1d5db; background: transparent; }
+  .dot-complete { border-color: #16a34a; background: #16a34a; }
+  .dot-void { border-color: #dc2626; background: #dc2626; }
+  .dot-incorrect { border-color: #d97706; background: #d97706; }
+
+  /* Row status backgrounds */
+  .row-status-complete td { background: #f0fdf4 !important; }
+  .row-status-void td { background: #fef2f2 !important; }
+  .row-status-incorrect td { background: #fefce8 !important; }
+  .row-status-complete td.col-finance { background: #dcfce7 !important; }
+  .row-status-void td.col-finance { background: #fee2e2 !important; }
+  .row-status-incorrect td.col-finance { background: #fef9c3 !important; }
 
   /* Date filter */
   .date-filter { display: flex; align-items: center; gap: 6px; }
