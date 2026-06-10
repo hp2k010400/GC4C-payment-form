@@ -3,22 +3,6 @@ import { useState } from 'react'
 
 const STORES = ['Edinburgh', 'Milton Keynes', 'Warrington', 'Southampton']
 
-const COLLEAGUES = [
-  'Adam Cooper', 'Adam Harrison', 'Adam Little', 'Alex Boogan',
-  'Alex Peers', 'Alex Spence', 'Alex Wadlewski', 'Anthony Blaney',
-  'Blair Welsh', 'Bradley', 'Charlie Povey', 'Connor Hamerston',
-  'Connor Wright', 'Daniel Nourse', 'Derek O.', 'Eden',
-  'Fraser Scott-Herron', 'Glen Trivett', 'Grant Doyle', "Gus O'Rourke",
-  'Hamish Quinn', 'Harrison Gale', 'Harry Simpson', 'Hector C',
-  'Iain W', 'Jack Allan', 'Jack Goodger', 'Jack Laybourne',
-  'Jack Shepherd-Todd', 'James Keeler', 'Joshua Takaira', 'Kenny Price',
-  'Kieran McCarthy', 'Lewis Walker', 'Liam Greenslade', 'Lilly Rowley',
-  'Luke Horan', 'Mark Crane', 'Martin Barnes', 'Matt Brion',
-  'Matt P', 'Matt Petley', 'Matt Strong', 'Matthew Morris',
-  'Mike Currie', 'Morgan Frost', 'Mudit Rana', 'Murray Welsh',
-  'Rob Hughes', 'Rory Smith', 'Ruebin Small', 'Stephen Cottee',
-  'Stuart Hulme', 'Theo Aurora', 'Tristan Neill',
-]
 
 const TRANSACTION_TYPES = ['Bank Transfer', 'Paypal', 'International']
 
@@ -253,10 +237,7 @@ export default function StorePaymentForm() {
                 </Field>
 
                 <Field label="Colleague Name" required error={errors.colleagueName}>
-                  <select className={inputClass('colleagueName')} value={form.colleagueName} onChange={e => update('colleagueName', e.target.value)}>
-                    <option value="">Please Select</option>
-                    {COLLEAGUES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <input className={inputClass('colleagueName')} type="text" value={form.colleagueName} onChange={e => update('colleagueName', e.target.value)} placeholder="Your name" />
                 </Field>
 
                 <Field label="Payment Amount" required error={errors.paymentAmount} hint="Please enter with two decimal places (e.g., 100.00)">
