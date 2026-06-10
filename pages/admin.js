@@ -61,14 +61,17 @@ export default function AdminPage() {
   const [rows, setRows] = useState([])
   const [isFinance, setIsFinance] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
+  const [lastUpdated, setLastUpdated] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
 
-  const fetchData = useCallback(async (activeTab) => {
-    setLoading(true)
+  const fetchData = useCallback(async (activeTab, silent = false) => {
+    if (!silent) setLoading(true)
+    else setRefreshing(true)
     setError(null)
     try {
       const res = await fetch(`/api/admin-data?tab=${activeTab}`)
@@ -76,14 +79,21 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(json.error || 'Failed to load data')
       setRows(json.rows || [])
       setIsFinance(json.isFinance || false)
+      setLastUpdated(new Date())
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [])
 
   useEffect(() => { fetchData(tab) }, [tab, fetchData])
+
+  useEffect(() => {
+    const interval = setInterval(() => fetchData(tab, true), 30000)
+    return () => clearInterval(interval)
+  }, [tab, fetchData])
 
   async function handleFinanceAuth(e) {
     e.preventDefault()
@@ -177,9 +187,14 @@ export default function AdminPage() {
             </button>
           </div>
           <div className="toolbar-right">
-            {!loading && !error && (
-              <span className="row-count">{rows.length} submission{rows.length !== 1 ? 's' : ''}</span>
+            {lastUpdated && !loading && (
+              <span className="row-count">
+                {rows.length} submission{rows.length !== 1 ? 's' : ''} · updated {lastUpdated.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
             )}
+            <button className="refresh-btn" onClick={() => fetchData(tab, true)} disabled={refreshing || loading} title="Refresh">
+              {refreshing ? '↻' : '↻'}
+            </button>
             <button className="export-btn" onClick={exportCSV} disabled={rows.length === 0 || loading}>
               Export CSV
             </button>
@@ -340,6 +355,16 @@ const CSS = `
   .tab-active { background: #005F2C !important; color: #fff !important; }
   .toolbar-right { display: flex; align-items: center; gap: 12px; }
   .row-count { font-size: 13px; color: #9ca3af; font-weight: 500; }
+  .refresh-btn {
+    width: 34px; height: 34px; border-radius: 8px;
+    border: 1.5px solid #d1d5db; background: #fff;
+    font-size: 18px; cursor: pointer; color: #6b7280;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s, color 0.15s;
+    line-height: 1;
+  }
+  .refresh-btn:hover:not(:disabled) { border-color: #005F2C; color: #005F2C; }
+  .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .export-btn {
     padding: 8px 16px; border-radius: 8px;
     border: 1.5px solid #005F2C; color: #005F2C;
