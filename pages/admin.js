@@ -411,6 +411,7 @@ export default function AdminPage() {
               </div>
               {(() => {
                 const summary = buildSummary()
+                const grandCount = summary.reduce((s, r) => s + r.count, 0)
                 const grandItems = summary.reduce((s, r) => s + r.items, 0)
                 const grandTotal = summary.reduce((s, r) => s + r.total, 0)
                 return (
@@ -419,17 +420,19 @@ export default function AdminPage() {
                       <thead>
                         <tr>
                           <th>Row Labels</th>
+                          <th>Number of Trades</th>
                           <th>Sum of Number of Items</th>
                           <th>Sum of Payment Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         {summary.length === 0 && (
-                          <tr><td colSpan={3} style={{textAlign:'center',color:'#9ca3af',padding:'32px'}}>No data for this period</td></tr>
+                          <tr><td colSpan={4} style={{textAlign:'center',color:'#9ca3af',padding:'32px'}}>No data for this period</td></tr>
                         )}
                         {summary.map(r => (
                           <tr key={r.name}>
                             <td>{r.name}</td>
+                            <td>{r.count.toLocaleString()}</td>
                             <td>{r.items.toLocaleString()}</td>
                             <td className="summary-amount">£{r.total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                           </tr>
@@ -438,6 +441,7 @@ export default function AdminPage() {
                       <tfoot>
                         <tr className="summary-grand-total">
                           <td>Grand Total</td>
+                          <td>{grandCount.toLocaleString()}</td>
                           <td>{grandItems.toLocaleString()}</td>
                           <td className="summary-amount">£{grandTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
