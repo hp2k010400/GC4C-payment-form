@@ -243,7 +243,7 @@ export default function StorePaymentForm() {
                 <Field label="Payment Amount" required error={errors.paymentAmount} hint="Please enter with two decimal places (e.g., 100.00)">
                   <div className="gc-prefix-wrap">
                     <span className="gc-prefix">£</span>
-                    <input className={`${inputClass('paymentAmount')} gc-input-prefixed`} type="number" step="0.01" min="0" value={form.paymentAmount} onChange={e => update('paymentAmount', e.target.value)} placeholder="0.00" />
+                    <input className={`${inputClass('paymentAmount')} gc-input-prefixed`} type="text" inputMode="decimal" value={form.paymentAmount} onChange={e => update('paymentAmount', e.target.value)} placeholder="0.00" />
                   </div>
                 </Field>
 
@@ -282,7 +282,7 @@ export default function StorePaymentForm() {
                     <Field label="Confirm Payment Amount" required error={errors.confirmPaymentAmount} hint="Re-enter the amount to confirm — required for payments over £999.99">
                       <div className="gc-prefix-wrap">
                         <span className="gc-prefix">£</span>
-                        <input className={`${inputClass('confirmPaymentAmount')} gc-input-prefixed`} type="number" step="0.01" min="0" value={form.confirmPaymentAmount} onChange={e => update('confirmPaymentAmount', e.target.value)} placeholder="0.00" />
+                        <input className={`${inputClass('confirmPaymentAmount')} gc-input-prefixed`} type="text" inputMode="decimal" value={form.confirmPaymentAmount} onChange={e => update('confirmPaymentAmount', e.target.value)} placeholder="0.00" />
                       </div>
                     </Field>
                   </div>
