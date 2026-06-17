@@ -103,6 +103,7 @@ export default function CommsPaymentForm() {
     const e = {}
     if (!form.colleagueName) e.colleagueName = 'Please select a colleague'
     if (!form.customerName.trim()) e.customerName = 'Customer name is required'
+    if (!form.poNumber?.trim()) e.poNumber = 'PO Number / React is required'
     if (!form.numberOfItems || parseInt(form.numberOfItems) < 1) e.numberOfItems = 'Enter a valid number of items'
     if (!form.countryOfOrigin.trim()) e.countryOfOrigin = 'Country of origin is required'
     if (!form.paymentAmount || parseFloat(form.paymentAmount) <= 0) e.paymentAmount = 'Enter a valid payment amount'
@@ -210,8 +211,8 @@ export default function CommsPaymentForm() {
                 <input className={inputClass('customerName')} type="text" value={form.customerName} onChange={e => update('customerName', e.target.value)} placeholder="Full name" />
               </Field>
 
-              <Field label="PO Number / React" error={errors.poNumber}>
-                <input className="gc-input" type="text" value={form.poNumber} onChange={e => update('poNumber', e.target.value)} placeholder="Optional" />
+              <Field label="PO Number / React" required error={errors.poNumber}>
+                <input className={inputClass('poNumber')} type="text" value={form.poNumber} onChange={e => update('poNumber', e.target.value)} />
               </Field>
 
               <Field label="Number of Items" required error={errors.numberOfItems}>
