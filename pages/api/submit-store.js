@@ -34,7 +34,7 @@ function formatSubmission(body) {
     time_of_payment: formattedTime,
     additional_notes: additionalNotes || null,
     transaction_type: transactionType,
-    sort_code: isBankTransfer ? (sortCode || null) : null,
+    sort_code: isBankTransfer ? (sortCode?.replace(/[-\s]/g, '') || null) : null,
     account_number: isBankTransfer ? (accountNumber || null) : null,
     paypal_email: isPaypal ? (paypalEmail || null) : null,
     iban: isInternational ? (iban || null) : null,

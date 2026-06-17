@@ -262,7 +262,7 @@ export default function CommsPaymentForm() {
                     <input className={inputClass('holderName')} type="text" value={form.holderName} onChange={e => update('holderName', e.target.value)} />
                   </Field>
                   <Field label="Sort Code" required error={errors.sortCode}>
-                    <input className={inputClass('sortCode')} type="text" value={form.sortCode} onChange={e => update('sortCode', e.target.value)} placeholder="XX-XX-XX" maxLength={8} />
+                    <input className={inputClass('sortCode')} type="text" value={form.sortCode} onChange={e => update('sortCode', e.target.value)} placeholder="123456" maxLength={8} />
                   </Field>
                   <Field label="Account Number" required error={errors.accountNumber}>
                     <input className={inputClass('accountNumber')} type="text" value={form.accountNumber} onChange={e => update('accountNumber', e.target.value)} placeholder="8-digit account number" maxLength={8} />
