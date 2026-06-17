@@ -258,14 +258,14 @@ export default function CommsPaymentForm() {
 
               {isBankTransfer && (
                 <div className="gc-conditional">
+                  <Field label="Account Holder Name" required error={errors.holderName}>
+                    <input className={inputClass('holderName')} type="text" value={form.holderName} onChange={e => update('holderName', e.target.value)} />
+                  </Field>
                   <Field label="Sort Code" required error={errors.sortCode}>
                     <input className={inputClass('sortCode')} type="text" value={form.sortCode} onChange={e => update('sortCode', e.target.value)} placeholder="XX-XX-XX" maxLength={8} />
                   </Field>
                   <Field label="Account Number" required error={errors.accountNumber}>
                     <input className={inputClass('accountNumber')} type="text" value={form.accountNumber} onChange={e => update('accountNumber', e.target.value)} placeholder="8-digit account number" maxLength={8} />
-                  </Field>
-                  <Field label="Account Holder Name" required error={errors.holderName}>
-                    <input className={inputClass('holderName')} type="text" value={form.holderName} onChange={e => update('holderName', e.target.value)} />
                   </Field>
                 </div>
               )}
@@ -328,6 +328,8 @@ const CSS = `
   .gc-input:focus { border-color: #005F2C; box-shadow: 0 0 0 3px rgba(0, 95, 44, 0.12); }
   .gc-input-error { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08) !important; }
   .gc-input::placeholder { color: #9ca3af; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
   select.gc-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 44px; cursor: pointer; }
   .gc-prefix-wrap { position: relative; display: flex; align-items: center; }
   .gc-prefix { position: absolute; left: 16px; font-size: 16px; font-weight: 500; color: #6b7280; pointer-events: none; z-index: 1; }

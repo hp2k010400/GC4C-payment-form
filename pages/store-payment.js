@@ -407,6 +407,8 @@ const CSS = `
   .gc-input:focus { border-color: #005F2C; box-shadow: 0 0 0 3px rgba(0, 95, 44, 0.12); }
   .gc-input-error { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08) !important; }
   .gc-input::placeholder { color: #9ca3af; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
   .gc-textarea { resize: vertical; min-height: 88px; }
   select.gc-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 44px; cursor: pointer; }
   .gc-prefix-wrap { position: relative; display: flex; align-items: center; }
