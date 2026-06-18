@@ -36,39 +36,9 @@ function Logo() {
   )
 }
 
-function TimePicker({ value, onChange, className }) {
-  let h = '', m = '00', ap = 'AM'
-  if (value) {
-    const [hStr, mStr] = value.split(':')
-    const h24 = parseInt(hStr)
-    ap = h24 >= 12 ? 'PM' : 'AM'
-    h = String(h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24)
-    m = mStr || '00'
-  }
-  function emit(newH, newM, newAp) {
-    if (!newH) { onChange(''); return }
-    let h24 = parseInt(newH)
-    if (newAp === 'PM' && h24 !== 12) h24 += 12
-    else if (newAp === 'AM' && h24 === 12) h24 = 0
-    onChange(`${String(h24).padStart(2, '0')}:${newM}`)
-  }
-  const mins = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
-  return (
-    <div className="gc-time-picker">
-      <select className={className} value={h} onChange={e => emit(e.target.value, m, ap)}>
-        <option value="">--</option>
-        {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => <option key={n} value={String(n)}>{n}</option>)}
-      </select>
-      <span className="gc-time-colon">:</span>
-      <select className={className} value={m} onChange={e => emit(h, e.target.value, ap)} disabled={!h}>
-        {mins.map(n => <option key={n} value={n}>{n}</option>)}
-      </select>
-      <select className={`${className} gc-ampm`} value={ap} onChange={e => emit(h, m, e.target.value)} disabled={!h}>
-        <option value="AM">AM</option>
-        <option value="PM">PM</option>
-      </select>
-    </div>
-  )
+function currentTime() {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 }
 
 function Field({ label, required, error, hint, children, className }) {
@@ -108,7 +78,7 @@ function SuccessPage({ customerName, onReset }) {
 }
 
 export default function StorePaymentForm() {
-  const [form, setForm] = useState(EMPTY)
+  const [form, setForm] = useState(() => ({ ...EMPTY, timeOfPayment: currentTime() }))
   const [errors, setErrors] = useState({})
   const [step, setStep] = useState(1)
   const [submitted, setSubmitted] = useState(false)
@@ -205,7 +175,7 @@ export default function StorePaymentForm() {
   }
 
   function reset() {
-    setForm(EMPTY)
+    setForm({ ...EMPTY, timeOfPayment: currentTime() })
     setErrors({})
     setStep(1)
     setSubmitted(false)
@@ -287,7 +257,7 @@ export default function StorePaymentForm() {
                     <input className={inputClass('dateOfPayment')} type="date" value={form.dateOfPayment} onChange={e => update('dateOfPayment', e.target.value)} />
                   </Field>
                   <Field label="Time of Payment" required error={errors.timeOfPayment}>
-                    <TimePicker className={inputClass('timeOfPayment')} value={form.timeOfPayment} onChange={v => update('timeOfPayment', v)} />
+                    <input className={inputClass('timeOfPayment')} type="time" value={form.timeOfPayment} onChange={e => update('timeOfPayment', e.target.value)} />
                   </Field>
                 </div>
 
@@ -474,10 +444,6 @@ const CSS = `
   .gc-success-title { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 14px; }
   .gc-success-text { font-size: 16px; color: #6b7280; line-height: 1.6; margin-bottom: 36px; max-width: 400px; }
   .gc-success-text strong { color: #111827; }
-  .gc-time-picker { display: flex; align-items: center; gap: 6px; }
-  .gc-time-picker select { flex: 1; min-width: 0; }
-  .gc-time-colon { font-size: 18px; font-weight: 600; color: #374151; flex-shrink: 0; }
-  .gc-ampm { font-weight: 700; flex: 0 0 72px !important; }
   @media (max-width: 520px) {
     .gc-page { padding: 20px 12px 48px; }
     .gc-card { border-radius: 16px; }
