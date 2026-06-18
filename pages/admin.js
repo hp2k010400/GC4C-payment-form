@@ -70,6 +70,8 @@ export default function AdminPage() {
   const [error, setError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [filterDate, setFilterDate] = useState('')
+  const [filterDateTo, setFilterDateTo] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [columnFilters, setColumnFilters] = useState({})
   const [showFilters, setShowFilters] = useState(false)
   const [selectedRows, setSelectedRows] = useState(new Set())
@@ -158,7 +160,21 @@ export default function AdminPage() {
 
   const filterDateFormatted = filterDate ? filterDate.split('-').reverse().join('/') : ''
   const filteredRows = rows
-    .filter(r => !filterDate || r.date_of_payment === filterDateFormatted)
+    .filter(r => {
+      if (!filterDate) return true
+      const d = parsePaymentDate(r.date_of_payment)
+      if (!d) return false
+      const from = new Date(filterDate); from.setHours(0,0,0,0)
+      if (d < from) return false
+      if (filterDateTo) { const to = new Date(filterDateTo); to.setHours(23,59,59,999); if (d > to) return false }
+      else if (d > new Date(filterDate + 'T23:59:59')) return false
+      return true
+    })
+    .filter(r => {
+      if (!statusFilter) return true
+      if (statusFilter === 'none') return !r.status
+      return r.status === statusFilter
+    })
     .filter(r => Object.entries(columnFilters).every(([key, val]) => {
       if (!val) return true
       const col = allCols.find(c => c.key === key)
@@ -193,7 +209,7 @@ export default function AdminPage() {
   }, [marchingIds])
 
   useEffect(() => { setMarchingIds(new Set()) }, [tab, filterDate])
-  useEffect(() => { setColumnFilters({}); setSelectedRows(new Set()) }, [tab])
+  useEffect(() => { setColumnFilters({}); setSelectedRows(new Set()); setFilterDateTo(''); setStatusFilter('') }, [tab])
 
   function toggleRow(id) {
     setSelectedRows(prev => {
@@ -362,18 +378,32 @@ export default function AdminPage() {
             >
               Filter columns
             </button>
+            <select
+              className="status-filter-select"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="">All statuses</option>
+              <option value="none">Unprocessed</option>
+              <option value="complete">Complete</option>
+              <option value="void">Void</option>
+              <option value="incorrect">Incorrect</option>
+            </select>
             <div className="date-filter">
               <input type="date" className="date-input" value={filterDate} onChange={e => setFilterDate(e.target.value)} />
+              <span className="date-range-sep">→</span>
+              <input type="date" className="date-input" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} min={filterDate || undefined} />
               <button className="date-quick-btn" onClick={() => {
                 const d = new Date(); d.setDate(d.getDate() - 1)
-                setFilterDate(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`)
+                const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+                setFilterDate(s); setFilterDateTo('')
               }}>Yesterday</button>
-              <button className="date-quick-btn" onClick={setToday}>Today</button>
-              {filterDate && <button className="date-clear-btn" onClick={() => setFilterDate('')}>✕</button>}
+              <button className="date-quick-btn" onClick={() => { setToday(); setFilterDateTo('') }}>Today</button>
+              {(filterDate || filterDateTo) && <button className="date-clear-btn" onClick={() => { setFilterDate(''); setFilterDateTo('') }}>✕</button>}
             </div>
             {lastUpdated && !loading && (
               <span className="row-count">
-                {filteredRows.length}{(filterDate || Object.values(columnFilters).some(Boolean)) ? ` of ${rows.length}` : ''} submission{filteredRows.length !== 1 ? 's' : ''}
+                {filteredRows.length}{(filterDate || filterDateTo || statusFilter || Object.values(columnFilters).some(Boolean)) ? ` of ${rows.length}` : ''} submission{filteredRows.length !== 1 ? 's' : ''}
               </span>
             )}
             <button className="refresh-btn" onClick={() => fetchData(tab, true)} disabled={refreshing || loading} title="Refresh">↻</button>
@@ -449,6 +479,52 @@ export default function AdminPage() {
                     </table>
                   </div>
                 )
+              })()}
+
+              {tab === 'store' && (() => {
+                const periodRows = rows.filter(r => inPeriod(r.date_of_payment))
+                const storeGrouped = {}
+                periodRows.forEach(r => {
+                  const s = r.store || 'Unknown'
+                  if (!storeGrouped[s]) storeGrouped[s] = { name: s, count: 0, total: 0 }
+                  storeGrouped[s].count++
+                  storeGrouped[s].total += parseFloat((r.payment_amount || '').replace(/[£,]/g, '')) || 0
+                })
+                const storeTotals = Object.values(storeGrouped).sort((a, b) => a.name.localeCompare(b.name))
+                const storeGrandCount = storeTotals.reduce((s, r) => s + r.count, 0)
+                const storeGrandTotal = storeTotals.reduce((s, r) => s + r.total, 0)
+                return storeTotals.length > 0 ? (
+                  <div style={{marginTop: 32}}>
+                    <h3 style={{fontSize: 14, fontWeight: 700, color: '#374151', marginBottom: 12}}>By Store Location</h3>
+                    <div className="table-wrap">
+                      <table className="admin-table summary-table">
+                        <thead>
+                          <tr>
+                            <th>Store</th>
+                            <th>Number of Trades</th>
+                            <th>Sum of Payment Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {storeTotals.map(r => (
+                            <tr key={r.name}>
+                              <td>{r.name}</td>
+                              <td>{r.count.toLocaleString()}</td>
+                              <td className="summary-amount">£{r.total.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="summary-grand-total">
+                            <td>Grand Total</td>
+                            <td>{storeGrandCount.toLocaleString()}</td>
+                            <td className="summary-amount">£{storeGrandTotal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                ) : null
               })()}
             </div>
           </div>
@@ -909,8 +985,17 @@ const CSS = `
   .row-status-void td.col-finance { background: #fee2e2 !important; }
   .row-status-incorrect td.col-finance { background: #fef9c3 !important; }
 
+  /* Status filter */
+  .status-filter-select {
+    padding: 7px 10px; border: 1.5px solid #d1d5db; border-radius: 8px;
+    font-size: 13px; font-family: inherit; color: #374151;
+    outline: none; cursor: pointer; background: #fff;
+  }
+  .status-filter-select:focus { border-color: #005F2C; }
+
   /* Date filter */
   .date-filter { display: flex; align-items: center; gap: 6px; }
+  .date-range-sep { color: #9ca3af; font-size: 13px; }
   .date-input {
     padding: 7px 10px; border: 1.5px solid #d1d5db; border-radius: 8px;
     font-size: 13px; font-family: inherit; color: #374151;
