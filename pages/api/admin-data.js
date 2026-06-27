@@ -18,15 +18,24 @@ export default async function handler(req, res) {
   const table = tab === 'store' ? 'store_submissions' : 'comms_submissions'
   const bankFields = tab === 'store' ? BANK_FIELDS_STORE : BANK_FIELDS_COMMS
 
-  const { data, error } = await supabase
-    .from(table)
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(10000)
+  const allData = []
+  const pageSize = 1000
+  let from = 0
 
-  if (error) return res.status(500).json({ error: error.message })
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, from + pageSize - 1)
 
-  const rows = isFinance ? data : data.map(r => stripBank(r, bankFields))
+    if (error) return res.status(500).json({ error: error.message })
+    if (data && data.length > 0) allData.push(...data)
+    if (!data || data.length < pageSize) break
+    from += pageSize
+  }
+
+  const rows = isFinance ? allData : allData.map(r => stripBank(r, bankFields))
 
   return res.status(200).json({ rows, isFinance })
 }
