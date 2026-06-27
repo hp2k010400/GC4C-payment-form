@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     .from(table)
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(1000)
+    .limit(10000)
 
   if (error) return res.status(500).json({ error: error.message })
 
