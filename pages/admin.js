@@ -258,8 +258,8 @@ export default function AdminPage() {
     }
     if (summaryPeriod === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
     if (summaryPeriod === 'custom') {
-      if (customFrom && d < new Date(customFrom)) return false
-      if (customTo) { const to = new Date(customTo); to.setHours(23,59,59,999); if (d > to) return false }
+      if (customFrom && d < new Date(customFrom + 'T00:00:00')) return false
+      if (customTo) { const to = new Date(customTo + 'T00:00:00'); to.setHours(23,59,59,999); if (d > to) return false }
       return true
     }
     return true
