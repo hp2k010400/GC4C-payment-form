@@ -10,7 +10,7 @@ const COLLEAGUES = [
   'Southampton', 'Milton Keynes',
 ]
 
-const TRANSACTION_TYPES = ['Bank Transfer', 'Paypal', 'International']
+const TRANSACTION_TYPES = ['Bank Transfer', 'Paypal', 'International', 'Store Credit']
 
 const EMPTY = {
   colleagueName: '',

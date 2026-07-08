@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0559/0450/1875/files/GC4C_SVG_Logo.svg?v=1745920148'
 
-const TX_TYPES = ['Bank Transfer', 'Paypal', 'International']
+const TX_TYPES = ['Bank Transfer', 'Paypal', 'International', 'Store Credit']
 
 const COMMS_COLUMNS = [
   { key: 'submitted_at',      label: 'Submitted At',      finance: false },

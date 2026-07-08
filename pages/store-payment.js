@@ -4,7 +4,7 @@ import { useState } from 'react'
 const STORES = ['Edinburgh', 'Milton Keynes', 'Warrington', 'Southampton']
 
 
-const TRANSACTION_TYPES = ['Bank Transfer', 'Paypal', 'International']
+const TRANSACTION_TYPES = ['Bank Transfer', 'Paypal', 'International', 'Store Credit']
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0559/0450/1875/files/GC4C_SVG_Logo.svg?v=1745920148'
 
