@@ -625,7 +625,7 @@ export default function AdminPage() {
                         isFinance && copyable && marchingIds.has(row.id) ? 'cell-marching' : '',
                       ].filter(Boolean).join(' ')
                       const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key
-                      const editable = isFinance && col.key !== 'submitted_at'
+                      const editable = col.key !== 'submitted_at'
                       return (
                         <td
                           key={col.key}

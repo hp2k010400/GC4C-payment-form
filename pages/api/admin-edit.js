@@ -18,9 +18,6 @@ function isValidDateOfPayment(str) {
 export default async function handler(req, res) {
   if (req.method !== 'PATCH') return res.status(405).end()
 
-  const isFinance = req.cookies?.gc4c_finance === process.env.FINANCE_PASSWORD
-  if (!isFinance) return res.status(403).json({ error: 'Finance access required' })
-
   const { id, table, field, value } = req.body
   if (!VALID_TABLES.includes(table)) return res.status(400).json({ error: 'Invalid table' })
   if (!EDITABLE[table].includes(field)) return res.status(400).json({ error: 'Field not editable' })
