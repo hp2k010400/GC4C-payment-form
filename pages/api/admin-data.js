@@ -20,19 +20,27 @@ export default async function handler(req, res) {
 
   const allData = []
   const pageSize = 1000
-  let from = 0
+  let cursor = null // { created_at, id } of the last row seen
 
   while (true) {
-    const { data, error } = await supabase
+    let query = supabase
       .from(table)
       .select('*')
       .order('created_at', { ascending: false })
-      .range(from, from + pageSize - 1)
+      .order('id', { ascending: false })
+      .limit(pageSize)
 
+    if (cursor) {
+      query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`)
+    }
+
+    const { data, error } = await query
     if (error) return res.status(500).json({ error: error.message })
-    if (data && data.length > 0) allData.push(...data)
+    if (data && data.length > 0) {
+      allData.push(...data)
+      cursor = { created_at: data[data.length - 1].created_at, id: data[data.length - 1].id }
+    }
     if (!data || data.length < pageSize) break
-    from += pageSize
   }
 
   const rows = isFinance ? allData : allData.map(r => stripBank(r, bankFields))

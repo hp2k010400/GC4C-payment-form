@@ -266,7 +266,7 @@ export default function AdminPage() {
   }
 
   function buildSummary() {
-    const periodRows = rows.filter(r => inPeriod(r.date_of_payment))
+    const periodRows = rows.filter(r => inPeriod(r.date_of_payment) && r.status !== 'void' && r.status !== 'incorrect')
     const grouped = {}
     periodRows.forEach(r => {
       const name = r.colleague_name || 'Unknown'
@@ -284,9 +284,22 @@ export default function AdminPage() {
     setEditValue(row[col.key] || '')
   }
 
+  function isValidDateOfPayment(str) {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(str)
+    if (!m) return false
+    const d = Number(m[1]), mo = Number(m[2]), y = Number(m[3])
+    if (y < 2000 || y > 2100) return false
+    const date = new Date(y, mo - 1, d)
+    return date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d
+  }
+
   async function saveEdit() {
     if (!editingCell) return
     const { rowId, colKey } = editingCell
+    if (colKey === 'date_of_payment' && editValue && !isValidDateOfPayment(editValue)) {
+      alert('Please enter the date as DD/MM/YYYY (e.g. 09/07/2026)')
+      return
+    }
     const table = tab === 'store' ? 'store_submissions' : 'comms_submissions'
     const prev = rows.find(r => r.id === rowId)?.[colKey]
     setRows(p => p.map(r => r.id === rowId ? { ...r, [colKey]: editValue } : r))
@@ -482,7 +495,7 @@ export default function AdminPage() {
               })()}
 
               {tab === 'store' && (() => {
-                const periodRows = rows.filter(r => inPeriod(r.date_of_payment))
+                const periodRows = rows.filter(r => inPeriod(r.date_of_payment) && r.status !== 'void' && r.status !== 'incorrect')
                 const storeGrouped = {}
                 periodRows.forEach(r => {
                   const s = r.store || 'Unknown'
@@ -612,12 +625,13 @@ export default function AdminPage() {
                         isFinance && copyable && marchingIds.has(row.id) ? 'cell-marching' : '',
                       ].filter(Boolean).join(' ')
                       const isEditing = editingCell?.rowId === row.id && editingCell?.colKey === col.key
+                      const editable = isFinance && col.key !== 'submitted_at'
                       return (
                         <td
                           key={col.key}
-                          className={`${cls}${col.key !== 'submitted_at' ? ' cell-editable' : ''}`}
-                          onDoubleClick={() => startEdit(row, col)}
-                          title={col.key !== 'submitted_at' ? 'Double-click to edit' : undefined}
+                          className={`${cls}${editable ? ' cell-editable' : ''}`}
+                          onDoubleClick={editable ? () => startEdit(row, col) : undefined}
+                          title={editable ? 'Double-click to edit' : undefined}
                         >
                           {isEditing ? (
                             <input
