@@ -35,7 +35,7 @@ function formatSubmission(body) {
     colleague_name: colleagueName,
     customer_name: customerName,
     po_number: poNumber || null,
-    number_of_items: parseInt(numberOfItems) || null,
+    number_of_items: Number.isNaN(parseInt(numberOfItems)) ? null : parseInt(numberOfItems),
     country_of_origin: countryOfOrigin,
     payment_amount: parseFloat(paymentAmount).toFixed(2),
     date_of_payment: formattedDate,
