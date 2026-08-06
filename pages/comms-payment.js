@@ -65,7 +65,7 @@ function Field({ label, required, error, hint, children, className }) {
   )
 }
 
-function SuccessPage({ customerName, onReset }) {
+function SuccessPage({ customerName, paymentAmount, transactionType, onReset }) {
   return (
     <div className="gc-page">
       <div className="gc-card">
@@ -78,8 +78,18 @@ function SuccessPage({ customerName, onReset }) {
           </div>
           <h2 className="gc-success-title">Submission Received</h2>
           <p className="gc-success-text">
-            Payment details for <strong>{customerName}</strong> have been recorded successfully.
+            Payment details for <strong>{customerName}</strong> submitted
           </p>
+          <div className="gc-success-details">
+            <div className="gc-success-row">
+              <span>Payment Value</span>
+              <strong>£{parseFloat(paymentAmount || 0).toFixed(2)}</strong>
+            </div>
+            <div className="gc-success-row">
+              <span>Payment Method</span>
+              <strong>{transactionType}</strong>
+            </div>
+          </div>
           <button className="gc-btn-primary" onClick={onReset}>Submit Another</button>
         </div>
       </div>
@@ -176,7 +186,7 @@ export default function CommsPaymentForm() {
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <style>{CSS}</style>
       </Head>
-      <SuccessPage customerName={form.customerName} onReset={reset} />
+      <SuccessPage customerName={form.customerName} paymentAmount={form.paymentAmount} transactionType={form.transactionType} onReset={reset} />
     </>
   )
 
@@ -355,6 +365,10 @@ const CSS = `
   .gc-success-title { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 14px; }
   .gc-success-text { font-size: 16px; color: #6b7280; line-height: 1.6; margin-bottom: 36px; max-width: 400px; }
   .gc-success-text strong { color: #111827; }
+  .gc-success-details { width: 100%; max-width: 320px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; }
+  .gc-success-row { display: flex; align-items: center; justify-content: space-between; font-size: 14.5px; color: #6b7280; padding: 6px 0; }
+  .gc-success-row strong { color: #111827; font-weight: 700; }
+  .gc-success-row + .gc-success-row { border-top: 1px solid #e5e7eb; }
   @media (max-width: 520px) {
     .gc-page { padding: 20px 12px 48px; }
     .gc-card { border-radius: 16px; }
