@@ -1,9 +1,10 @@
 import Head from 'next/head'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 const LOGO_URL = 'https://cdn.shopify.com/s/files/1/0559/0450/1875/files/GC4C_SVG_Logo.svg?v=1745920148'
 
 const TX_TYPES = ['Bank Transfer', 'Paypal', 'International', 'Store Credit']
+const PAGE_SIZE = 200
 
 const COMMS_COLUMNS = [
   { key: 'submitted_at',      label: 'Submitted At',      finance: false },
@@ -75,6 +76,7 @@ export default function AdminPage() {
   const [columnFilters, setColumnFilters] = useState({})
   const [showFilters, setShowFilters] = useState(false)
   const [selectedRows, setSelectedRows] = useState(new Set())
+  const [page, setPage] = useState(1)
   const [viewMode, setViewMode] = useState('table')
   const [summaryPeriod, setSummaryPeriod] = useState('month')
   const [customFrom, setCustomFrom] = useState('')
@@ -159,7 +161,7 @@ export default function AdminPage() {
   const visibleCols = allCols.filter(c => isFinance || !c.finance)
 
   const filterDateFormatted = filterDate ? filterDate.split('-').reverse().join('/') : ''
-  const filteredRows = rows
+  const filteredRows = useMemo(() => rows
     .filter(r => {
       if (!filterDate) return true
       const d = parsePaymentDate(r.date_of_payment)
@@ -179,7 +181,10 @@ export default function AdminPage() {
       if (!val) return true
       const col = allCols.find(c => c.key === key)
       return col?.filterOptions ? r[key] === val : String(r[key] || '').toLowerCase().includes(val.toLowerCase())
-    }))
+    })), [rows, filterDate, filterDateTo, statusFilter, columnFilters, allCols])
+
+  const pageCount = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE))
+  const pagedRows = useMemo(() => filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filteredRows, page])
 
   function setToday() {
     const today = new Date()
@@ -209,7 +214,9 @@ export default function AdminPage() {
   }, [marchingIds])
 
   useEffect(() => { setMarchingIds(new Set()) }, [tab, filterDate])
-  useEffect(() => { setColumnFilters({}); setSelectedRows(new Set()); setFilterDateTo(''); setStatusFilter('') }, [tab])
+  useEffect(() => { setColumnFilters({}); setSelectedRows(new Set()); setFilterDateTo(''); setStatusFilter(''); setPage(1) }, [tab])
+  useEffect(() => { setPage(1) }, [filterDate, filterDateTo, statusFilter, columnFilters])
+  useEffect(() => { if (page > pageCount) setPage(pageCount) }, [pageCount, page])
 
   function toggleRow(id) {
     setSelectedRows(prev => {
@@ -220,9 +227,15 @@ export default function AdminPage() {
   }
 
   function toggleAll() {
-    setSelectedRows(prev =>
-      prev.size === filteredRows.length ? new Set() : new Set(filteredRows.map(r => r.id))
-    )
+    setSelectedRows(prev => {
+      const allSelected = pagedRows.length > 0 && pagedRows.every(r => prev.has(r.id))
+      if (allSelected) {
+        const next = new Set(prev)
+        pagedRows.forEach(r => next.delete(r.id))
+        return next
+      }
+      return new Set([...prev, ...pagedRows.map(r => r.id)])
+    })
   }
 
   async function batchStatus(status) {
@@ -575,9 +588,9 @@ export default function AdminPage() {
                         <input
                           type="checkbox"
                           className="row-checkbox"
-                          checked={filteredRows.length > 0 && filteredRows.every(r => selectedRows.has(r.id))}
+                          checked={pagedRows.length > 0 && pagedRows.every(r => selectedRows.has(r.id))}
                           onChange={toggleAll}
-                          title="Select all"
+                          title="Select all on this page"
                         />
                       </th>
                     )}
@@ -615,7 +628,7 @@ export default function AdminPage() {
                   )}
                 </thead>
                 <tbody>
-                  {filteredRows.map((row, i) => {
+                  {pagedRows.map((row, i) => {
                     const rowStatus = row.status || 'none'
                     const cells = visibleCols.map(col => {
                       const copyable = isCopyable(col)
@@ -672,6 +685,14 @@ export default function AdminPage() {
                 </tbody>
 
               </table>
+            </div>
+          )}
+
+          {!loading && !error && pageCount > 1 && (
+            <div className="pager">
+              <button className="pager-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>← Prev</button>
+              <span className="pager-status">Page {page} of {pageCount} <span className="pager-dim">({filteredRows.length.toLocaleString()} rows)</span></span>
+              <button className="pager-btn" onClick={() => setPage(p => Math.min(pageCount, p + 1))} disabled={page >= pageCount}>Next →</button>
             </div>
           )}
         </div>}
@@ -1030,6 +1051,18 @@ const CSS = `
     transition: background 0.15s;
   }
   .date-clear-btn:hover { background: #d1d5db; }
+
+  /* Pagination */
+  .pager { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 16px 0 4px; }
+  .pager-btn {
+    padding: 7px 14px; border-radius: 8px; border: 1.5px solid #d1d5db;
+    background: #fff; font-size: 13px; font-weight: 600; font-family: inherit;
+    cursor: pointer; color: #374151; transition: border-color 0.15s, color 0.15s;
+  }
+  .pager-btn:hover:not(:disabled) { border-color: #005F2C; color: #005F2C; }
+  .pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pager-status { font-size: 13px; font-weight: 600; color: #374151; }
+  .pager-dim { font-weight: 500; color: #9ca3af; }
 
   /* Copy all button */
   .copy-all-btn {
